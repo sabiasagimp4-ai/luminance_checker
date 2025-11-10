@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>白黒比認識ツール (v6.3 Minimal Art)</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant:wght@300;400;700&family=Montserrat:wght@300;400;700&family=Noto+Sans+JP:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+/* 🎨 EIZO風ミニマルUI */
+:root {
+  --bg-color: #000000;
+  --main-card-bg: #000000; /* カード背景をページ背景色と同じに */
+  --text-color-light: #FFFFFF;
+  --text-color-dark: #FFFFFF;
+  --subtle-line: #444444; 
+  --strong-line: #FFFFFF;
+  --accent-color: #0000FF; /* ヒストグラムのメイン色 */
+  --threshold-color: #FFFFFF; /* 閾値の色を白に */
+  --font-heading: 'Cormorant', "Noto Sans JP", serif;
+  --font-body: 'Noto Sans JP', 'Montserrat', sans-serif;
+}
+
+body {
+  font-family: var(--font-body);
+  text-align: center;
+  background: var(--bg-color);
+  margin: 0;
+  padding: 60px 40px;
+  color: var(--text-color-light);
+  min-height: 100vh;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+h2 {
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--text-color-light);
+  margin-bottom: 5px;
+  font-family: var(--font-heading);
+  letter-spacing: 0.05em;
+}
+
+.sub-text {
+  color: #AAAAAA;
+  font-size: 14px;
+  font-family: var(--font-body);
+  line-height: 1.7;
+  margin-bottom: 50px;
+}
+
+/* --- ドロップ領域 (初期状態) --- */
+#initialDropArea {
+  position: relative;
+  width: 800px;
+  height: 450px;
+  background-color: var(--main-card-bg); /* ページ背景色と同じ */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0 auto;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  border: none; /* 縁取りを削除 */
+}
+
+#initialDropArea:hover, #initialDropArea.highlight {
+  background-color: #1a1a1a; /* ホバー時は少し色を変える */
+}
+
+#initialDropArea p {
+  color: var(--text-color-dark);
+  font-size: 24px;
+  font-weight: 700;
+  font-family: var(--font-body);
+  background-color: transparent; /* 背景透明 */
+  padding: 5px 15px;
+  border: 1px solid var(--text-color-dark);
+  line-height: 1;
+}
+
+#initialFileInput {
+  display: none;
+}
+
+/* --- 解析結果コンテナ (アニメーションを追加) --- */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+#analysisContainer {
+  opacity: 0;
+  animation: fadeIn 0.8s ease-out forwards;
+  animation-delay: 0.1s; 
+  
+  width: 100%;
+  max-width: 1200px;
+  margin-top: 40px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 40px;
+  align-items: start;
+}
+
+/* 左側の画像プレビューとヒストグラム */
+.left-panel {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--main-card-bg); /* ページ背景色と同じ */
+  padding: 30px;
+  color: var(--text-color-dark);
+  text-align: left;
+  border: none; /* 縁取りを削除 */
+}
+
+#imagePlaceholder {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background-color: #222222;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 24px;
+  font-weight: 700;
+  color: #666666;
+  margin-bottom: 20px;
+}
+
+#resultImagePreview {
+  width: 100%;
+  height: auto;
+  display: none;
+  margin-bottom: 20px;
+  border: none; /* 縁取りを削除 */
+}
+
+.hist-label {
+  font-size: 20px;
+  font-weight: 700;
+  margin-top: 30px;
+  margin-bottom: 15px;
+  padding-top: 15px;
+  text-align: center;
+  font-family: var(--font-heading);
+}
+
+#histogramCanvas {
+  width: 100%;
+  height: 120px;
+  display: block;
+  background-color: var(--main-card-bg); /* ページ背景色と同じ */
+}
+
+/* 右側の解析結果とコピーボタン */
+.right-panel {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-color); /* ページ背景色と同じ */
+  padding: 0;
+  color: var(--text-color-light);
+  text-align: left;
+}
+
+.result-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--subtle-line);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.result-item:hover {
+  background-color: #1a1a1a;
+}
+
+.result-item:last-child {
+  border-bottom: none;
+}
+
+.result-label {
+  width: 150px;
+  font-size: 16px;
+  font-weight: 300;
+  color: #AAAAAA;
+  margin-right: 20px;
+}
+
+.result-value {
+  font-size: 20px;
+  font-weight: 700;
+  font-family: 'Montserrat', sans-serif;
+  flex-grow: 1;
+}
+
+/* カラーボックスとコントラスト比 */
+.color-swatch {
+  width: 20px;
+  height: 20px;
+  border: 1px solid #555;
+  margin-left: 10px;
+}
+
+/* 右下の二値化/グレースケール表示エリア */
+#processedImagesArea {
+  grid-column: 2 / 3;
+  margin-top: 40px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  background-color: var(--bg-color); /* ページ背景色と同じ */
+  padding: 0;
+}
+
+.processed-image-card {
+  background-color: var(--main-card-bg); /* ページ背景色と同じ */
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: none; /* 縁取りを削除 */
+}
+
+.processed-image-card canvas {
+  width: 100%;
+  height: auto;
+  max-height: 200px;
+  display: block;
+  border: none; /* 縁取りを削除 */
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.processed-image-card canvas:hover {
+  border-color: var(--strong-line);
+}
+
+.processed-image-card p {
+  font-size: 14px;
+  color: #AAAAAA;
+  margin: 0;
+}
+
+
+/* フッター */
+footer {
+  margin-top: 80px;
+  font-size: 12px;
+  color: #666666;
+  font-family: var(--font-body);
+}
+
+/* コピーツールチップ */
+.copy-tooltip {
+  position: fixed;
+  background-color: #333;
+  color: #fff;
+  padding: 5px 10px;
+  border-radius: 3px;
+  font-size: 12px;
+  z-index: 1000;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.copy-tooltip.show {
+  opacity: 1;
+}
+
+</style>
+</head>
+<body>
+
+<h2>白黒比認識ツール</h2>
+<p class="sub-text">画像の白黒の比率を認識してくれるツールです。<br>ヒストグラムとかがでます。</p>
+
+<div id="initialDropArea">
+  <input type="file" id="initialFileInput" accept="image/*">
+  <p>画像を D&D で追加</p>
+</div>
+
+<div id="analysisContainer" style="display: none;">
+  
+<div class="left-panel">
+    <img id="resultImagePreview" style="max-width: 100%; height: auto; margin-bottom: 20px;" alt="解析対象画像">
+    <div id="imagePlaceholder">画像をアップロードしてください。</div>
+    
+    <p class="hist-label">ヒストグラム</p>
+    <canvas id="histogramCanvas"></canvas>
+  </div>
+
+  
+<div class="right-panel">
+    <div class="result-item" data-copy-target="blackRatio">
+      <span class="result-label">黒の割合:</span>
+      <span class="result-value" id="blackRatioValue">--</span>
+    </div>
+    <div class="result-item" data-copy-target="whiteRatio">
+      <span class="result-label">白の割合:</span>
+      <span class="result-value" id="whiteRatioValue">--</span>
+    </div>
+    <div class="result-item" data-copy-target="lightColor">
+      <span class="result-label">最も明るい色:</span>
+      <span class="result-value" id="lightColorValue">#FFFFFF</span>
+      <div class="color-swatch" id="lightColorSwatch"></div>
+    </div>
+    <div class="result-item" data-copy-target="darkColor">
+      <span class="result-label">最も暗い色:</span>
+      <span class="result-value" id="darkColorValue">#000000</span>
+      <div class="color-swatch" id="darkColorSwatch"></div>
+    </div>
+    <div class="result-item" data-copy-target="contrastRatio">
+      <span class="result-label">コントラスト比:</span>
+      <span class="result-value" id="contrastRatioValue">--:1</span>
+    </div>
+
+    
+<div id="processedImagesArea">
+      <div class="processed-image-card">
+        <canvas id="binaryCanvas" data-filename="binary_image.png"></canvas>
+        <p>二値化画像</p>
+      </div>
+      <div class="processed-image-card">
+        <canvas id="grayscaleCanvas" data-filename="grayscale_image.png"></canvas>
+        <p>グレースケール画像</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <p>Created by Sabiasagi</p>
+</footer>
+
+<div id="copyTooltip" class="copy-tooltip">コピーしました！</div>
+
+<script>
+// --- 1. 変数定義と初期設定 ---
+const DOM = {
+    initialDropArea: document.getElementById('initialDropArea'),
+    initialFileInput: document.getElementById('initialFileInput'),
+    analysisContainer: document.getElementById('analysisContainer'),
+    resultImagePreview: document.getElementById('resultImagePreview'),
+    imagePlaceholder: document.getElementById('imagePlaceholder'),
+    histogramCanvas: document.getElementById('histogramCanvas'),
+    binaryCanvas: document.getElementById('binaryCanvas'),
+    grayscaleCanvas: document.getElementById('grayscaleCanvas'),
+    copyTooltip: document.getElementById('copyTooltip'),
+    values: {
+        blackRatio: document.getElementById('blackRatioValue'),
+        whiteRatio: document.getElementById('whiteRatioValue'),
+        lightColor: document.getElementById('lightColorValue'),
+        darkColor: document.getElementById('darkColorValue'),
+        contrastRatio: document.getElementById('contrastRatioValue')
+    },
+    swatches: {
+        lightColor: document.getElementById('lightColorSwatch'),
+        darkColor: document.getElementById('darkColorSwatch')
+    }
+};
+
+let currentImage = null; // 画像オブジェクトを保持して再利用
+
+// --- 2. イベントリスナー登録 ---
+// ドロップエリアクリック
+DOM.initialDropArea.addEventListener('click', () => DOM.initialFileInput.click());
+
+// ファイル選択時
+DOM.initialFileInput.addEventListener('change', e => {
+  if (e.target.files.length > 0) handleFile(e.target.files[0]);
+});
+
+// ドラッグ&ドロップ処理の統合
+['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+  DOM.initialDropArea.addEventListener(eventName, preventDefaults, false);
+});
+DOM.initialDropArea.addEventListener('dragenter', () => DOM.initialDropArea.classList.add('highlight'), false);
+DOM.initialDropArea.addEventListener('dragleave', () => DOM.initialDropArea.classList.remove('highlight'), false);
+DOM.initialDropArea.addEventListener('drop', handleDrop, false);
+
+function preventDefaults(e) {
+  e.preventDefault();
+  e.stopPropagation();
+}
+
+function handleDrop(e) {
+  const files = e.dataTransfer.files;
+  if (files.length > 0) {
+    DOM.initialDropArea.classList.remove('highlight');
+    handleFile(files[0]);
+  }
+}
+
+// コピー機能の登録
+document.querySelectorAll('.result-item').forEach(item => {
+  item.addEventListener('click', copyTextToClipboard);
+});
+
+// ダウンロード機能の登録
+[DOM.binaryCanvas, DOM.grayscaleCanvas].forEach(canvas => {
+    canvas.addEventListener('click', () => downloadCanvasImage(canvas, canvas.dataset.filename));
+});
+
+// --- 3. メインロジック ---
+
+function handleFile(file) {
+  if (!file.type.startsWith('image/')) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      currentImage = img; // 画像オブジェクトを保存
+      
+      // UI切り替えとアニメーション
+      DOM.initialDropArea.style.display = 'none';
+      DOM.resultImagePreview.src = img.src;
+      DOM.resultImagePreview.style.display = 'block';
+      DOM.imagePlaceholder.style.display = 'none';
+
+      DOM.analysisContainer.style.opacity = '0';
+      DOM.analysisContainer.style.display = 'grid';
+      setTimeout(() => { DOM.analysisContainer.style.opacity = '1'; }, 50);
+
+      analyzeAndDisplayResults(img);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function analyzeAndDisplayResults(img) {
+  const tempCanvas = document.createElement('canvas');
+  const tempCtx = tempCanvas.getContext('2d');
+  tempCanvas.width = img.width;
+  tempCanvas.height = img.height;
+  tempCtx.drawImage(img, 0, 0);
+
+  const imageData = tempCtx.getImageData(0, 0, img.width, img.height);
+  const data = imageData.data;
+  const histogram = new Array(256).fill(0);
+  let minLum = 256, maxLum = -1;
+  let minColor = [0,0,0], maxColor = [255,255,255];
+
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i], g = data[i+1], b = data[i+2];
+    const lum = Math.round(0.299*r + 0.587*g + 0.114*b);
+    histogram[lum]++;
+    
+    if (lum < minLum) { minLum = lum; minColor = [r,g,b]; }
+    if (lum > maxLum) { maxLum = lum; maxColor = [r,g,b]; }
+  }
+
+  const threshold = otsuThreshold(histogram, img.width * img.height);
+  
+  let black = 0, white = 0;
+  for (let i = 0; i < 256; i++) {
+    if (i < threshold) black += histogram[i];
+    else white += histogram[i];
+  }
+
+  const totalPixels = black + white;
+  const blackRatio = (black / totalPixels * 100).toFixed(2);
+  const whiteRatio = (white / totalPixels * 100).toFixed(2);
+
+  const darkestHex = rgbToHex(...minColor);
+  const lightestHex = rgbToHex(...maxColor);
+  const contrast = getContrastRatio(lightestHex, darkestHex);
+
+  // UIの更新
+  DOM.values.blackRatio.textContent = `${blackRatio}%`;
+  DOM.values.whiteRatio.textContent = `${whiteRatio}%`;
+  DOM.values.lightColor.textContent = lightestHex;
+  DOM.values.darkColor.textContent = darkestHex;
+  DOM.swatches.lightColor.style.backgroundColor = lightestHex;
+  DOM.swatches.darkColor.style.backgroundColor = darkestHex;
+  DOM.values.contrastRatio.textContent = `${contrast.toFixed(2)}:1`;
+
+  // 描画
+  animateHistogram(DOM.histogramCanvas, histogram, threshold);
+  drawProcessedImage(DOM.binaryCanvas, img, threshold, 'binary');
+  drawProcessedImage(DOM.grayscaleCanvas, img, threshold, 'grayscale');
+}
+
+// 処理済み画像の描画を汎用化/統合
+function drawProcessedImage(canvas, originalImg, threshold, mode) {
+    canvas.width = originalImg.width;
+    canvas.height = originalImg.height;
+
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(originalImg, 0, 0);
+
+    const imageData = ctx.getImageData(0, 0, originalImg.width, originalImg.height);
+    const data = imageData.data;
+
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i], g = data[i+1], b = data[i+2];
+      const lum = Math.round(0.299*r + 0.587*g + 0.114*b);
+      let color;
+
+      if (mode === 'binary') {
+        color = lum < threshold ? 0 : 255;
+      } else { // grayscale
+        color = lum;
+      }
+      data[i] = data[i+1] = data[i+2] = color;
+    }
+    ctx.putImageData(imageData, 0, 0);
+}
+
+
+// --- 4. ユーティリティ関数 ---
+
+function otsuThreshold(hist, total) {
+  let sum = 0;
+  for (let i = 0; i < 256; i++) sum += i * hist[i];
+
+  let sumB = 0, wB = 0, wF = 0, varMax = 0, threshold = 0;
+
+  for (let i = 0; i < 256; i++) {
+    wB += hist[i];
+    if (wB === 0) continue;
+    wF = total - wB;
+    if (wF === 0) break;
+    sumB += i * hist[i];
+    
+    const mB = sumB / wB;
+    const mF = (sum - sumB) / wF;
+    const varBetween = wB * wF * (mB - mF) ** 2;
+
+    if (varBetween > varMax) {
+      varMax = varBetween;
+      threshold = i;
+    }
+  }
+  return threshold;
+}
+
+// ヒストグラムアニメーション (滑らかな線グラフ - 色と閾値を変更)
+function animateHistogram(canvas, histogram, threshold) {
+  const ctx = canvas.getContext('2d');
+  canvas.width = 256; // 内部解像度を固定
+  canvas.height = 120; // 内部解像度を固定
+  const w = canvas.width;
+  const h = canvas.height - 15;
+  const max = Math.max(...histogram);
+  
+  const animationDuration = 800;
+  const startTime = performance.now();
+
+  function drawFrame(currentTime) {
+    const elapsedTime = currentTime - startTime;
+    const animationProgress = Math.min(1, elapsedTime / animationDuration);
+
+    ctx.clearRect(0, 0, w, canvas.height); // 全体をクリア
+
+    // グラフ描画 (原色青)
+    ctx.beginPath();
+    ctx.moveTo(0, h);
+
+    const currentDrawRange = 256 * animationProgress;
+
+    for (let i = 0; i < currentDrawRange; i++) {
+      const barHeight = (histogram[i] / max) * h;
+      const x = i;
+      const y = h - barHeight;
+      
+      // シンプルな曲線補間 (Quadratic Bezier)
+      // よりシャープにするため、制御点を調整するか、直線で結ぶ
+      if (i === 0) {
+        ctx.lineTo(x, y);
+      } else {
+        const prevX = i - 1;
+        const prevY = h - (histogram[prevX] / max) * h;
+        ctx.bezierCurveTo(prevX + (x - prevX) * 0.5, prevY, x - (x - prevX) * 0.5, y, x, y);
+      }
+    }
+    
+    // 終点を一番下に
+    ctx.lineTo(currentDrawRange, h);
+    
+    ctx.fillStyle = 'rgba(0, 0, 255, 0.6)'; // 半透明の原色青
+    ctx.fill();
+    ctx.strokeStyle = '#0000FF'; // 原色青の線
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // 輝度スケール (下部)
+    const grad = ctx.createLinearGradient(0, h, w, h + 15);
+    grad.addColorStop(0, "#000000");
+    grad.addColorStop(1, "#FFFFFF");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, h, w, 15);
+
+    // 閾値の線 (アニメーションの最後に描画 - 白の棒)
+    if (animationProgress === 1) {
+      ctx.strokeStyle = '#FFFFFF'; // 白
+      ctx.lineWidth = 2; // 少し太く
+      ctx.beginPath();
+      ctx.moveTo(threshold, 0);
+      ctx.lineTo(threshold, h);
+      ctx.stroke();
+    }
+    
+    if (animationProgress < 1) {
+      requestAnimationFrame(drawFrame);
+    }
+  }
+
+  requestAnimationFrame(drawFrame);
+}
+
+
+function rgbToHex(r,g,b) {
+  return "#" + [r,g,b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+}
+
+function getLuminance(hex) {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+
+  const toLinear = (c) => (c <= 0.03928) ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  
+  const L = 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+  return L;
+}
+
+function getContrastRatio(hex1, hex2) {
+  const L1 = getLuminance(hex1);
+  const L2 = getLuminance(hex2);
+  return (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05);
+}
+
+// --- 5. コピー/ダウンロード機能 ---
+
+function copyTextToClipboard(e) {
+    const item = e.currentTarget;
+    const targetId = item.dataset.copyTarget;
+    let textToCopy = '';
+
+    switch(targetId) {
+      case 'blackRatio':
+        textToCopy = DOM.values.blackRatio.textContent.replace('%', '');
+        break;
+      case 'whiteRatio':
+        textToCopy = DOM.values.whiteRatio.textContent.replace('%', '');
+        break;
+      case 'lightColor':
+        textToCopy = DOM.values.lightColor.textContent;
+        break;
+      case 'darkColor':
+        textToCopy = DOM.values.darkColor.textContent;
+        break;
+      case 'contrastRatio':
+        textToCopy = DOM.values.contrastRatio.textContent.replace(':1', '');
+        break;
+    }
+
+    if (textToCopy) {
+      navigator.clipboard.writeText(textToCopy).then(() => {
+        showTooltip(e.clientX, e.clientY);
+      }).catch(err => {
+        console.error('コピーに失敗しました:', err);
+      });
+    }
+}
+
+let tooltipTimeout;
+function showTooltip(x, y) {
+  DOM.copyTooltip.style.left = `${x + 10}px`;
+  DOM.copyTooltip.style.top = `${y - 20}px`;
+  DOM.copyTooltip.classList.add('show');
+
+  clearTimeout(tooltipTimeout);
+  tooltipTimeout = setTimeout(() => {
+    DOM.copyTooltip.classList.remove('show');
+  }, 1500);
+}
+
+function downloadCanvasImage(canvas, filename) {
+    const link = document.createElement('a');
+    link.download = filename || 'image.png';
+    canvas.toBlob((blob) => {
+        link.href = URL.createObjectURL(blob);
+        link.click();
+        URL.revokeObjectURL(link.href);
+    }, 'image/png');
+}
+</script>
+</body>
+</html>
