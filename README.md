@@ -1,2 +1,2 @@
-# luminance_checker
-check luminance
+# 画像のカラーを解析するツール
+ベクトルスコープとか、ヒストグラムとか、色々してます。
