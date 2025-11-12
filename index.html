@@ -355,6 +355,99 @@ transition: opacity 0.3s ease;
 .copy-tooltip.show {
 opacity: 1;
 }
+
+/* ★★★★★ ここからレスポンシブ対応のための追記 ★★★★★ */
+
+/* 768px以下の画面サイズ（タブレット・スマートフォン縦向き）での調整 */
+@media (max-width: 768px) {
+    body {
+        padding: 20px 15px; /* 全体の余白を小さく */
+        min-height: auto;
+    }
+
+    h2 {
+        font-size: 28px; /* 見出しを小さく */
+    }
+
+    .sub-text {
+        font-size: 13px;
+        margin-bottom: 30px;
+    }
+
+    /* --- ドロップ領域 (初期状態) --- */
+    #initialDropArea {
+        width: 100%; /* 全幅に広げる */
+        height: 250px; /* 高さを縮小 */
+    }
+
+    #initialDropArea p {
+        font-size: 20px;
+        padding: 3px 10px;
+    }
+
+    /* --- 解析結果コンテナ --- */
+    #analysisContainer {
+        grid-template-columns: 1fr; /* 2列から1列に切り替え */
+        gap: 30px; /* 間隔を調整 */
+    }
+
+    /* 左パネル (画像とヒストグラム) */
+    .left-panel {
+        padding: 20px;
+    }
+
+    /* 右パネル (結果一覧、スコープ) */
+    .right-panel {
+        padding: 0;
+    }
+
+    .hist-label {
+        font-size: 18px;
+    }
+    
+    /* 結果項目 */
+    .result-item {
+        padding: 8px 0;
+    }
+
+    .result-label {
+        width: 120px; /* ラベル幅を縮小 */
+        font-size: 15px;
+    }
+
+    .result-value {
+        font-size: 18px;
+    }
+
+    /* ベクトルスコープ */
+    #vectorscopeCard {
+        padding: 15px;
+    }
+
+    #vectorscopeWrapper {
+        width: 200px; /* スコープサイズを縮小 */
+        height: 200px;
+    }
+    
+    .scope-data-display {
+        font-size: 12px;
+    }
+    
+    .scope-data-value {
+        font-size: 14px;
+    }
+
+    /* 処理済み画像エリア */
+    #processedImagesArea {
+        gap: 15px;
+        margin-top: 30px;
+    }
+    
+    .processed-image-card {
+        padding: 15px;
+    }
+}
+/* ★★★★★ レスポンシブ対応のための追記 終了 ★★★★★ */
 </style>
 </head>
 <body>
@@ -402,7 +495,6 @@ opacity: 1;
 <span class="result-value" id="contrastRatioValue">--:1</span>
 </div>
 
-<!-- ★ ベクトルスコープエリア (レイアウト変更により移動) -->
 <div id="vectorscopeCard">
     <p class="hist-label" style="margin-top: 0; padding-top: 0; font-size: 16px;">ベクトルスコープ (Cr/Cb)</p>
     <div id="vectorscopeWrapper">
@@ -423,9 +515,6 @@ opacity: 1;
         </div>
     </div>
 </div>
-<!-- ★ ----------------------------- -->
-
-
 <div id="processedImagesArea">
 <div class="processed-image-card">
 <canvas id="binaryCanvas" data-filename="binary_image.png"></canvas>
