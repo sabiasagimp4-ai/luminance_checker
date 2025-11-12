@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>白黒比＆ベクトルスコープ認識ツール</title>
+<title>白黒比＆ベクトルスコープ認識ツール (Pro)</title>
 
 <script>
 // Typekit (フォント) の読み込み
@@ -17,7 +17,7 @@
   })(document);
 </script>
 <style>
-/* 🎨 EIZO風ミニマルUI - ここを編集すれば全体の色とフォントが変わります！ */
+/* 🎨 EIZO風ミニマルUI */
 :root {
 /* --- 🎨 カラー設定 --- */
 --bg-color: #dbdbd7; 	 /* 全体の背景色 (淡いグレー) */
@@ -155,12 +155,34 @@ color: var(--text-color-subtle);
 margin-bottom: 20px;
 }
 
+/* ★★★ <img> から <canvas> に変更 ★★★ */
 #resultImagePreview {
 width: 100%;
 height: auto;
 display: none;
 margin-bottom: 20px;
 border: none;
+cursor: crosshair; /* スポイト機能のためにカーソルを変更 */
+}
+
+/* ★★★ 新規追加: ゼブラコントロール ★★★ */
+#zebraControls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    font-size: 14px;
+    padding: 10px;
+    border-top: 1px dashed var(--line-subtle);
+    border-bottom: 1px dashed var(--line-subtle);
+}
+#zebraControls label {
+    margin-right: 5px;
+}
+#zebraControls input[type="number"] {
+    width: 60px;
+    font-family: var(--font-futura);
 }
 
 .hist-label {
@@ -224,6 +246,33 @@ height: 20px;
 border: 1px solid var(--text-color-subtle);
 margin-left: 10px;
 }
+
+/* ★★★ 新規追加: 波形モニター ★★★ */
+.waveform-container {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line-subtle);
+}
+.waveform-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+.waveform-header .hist-label {
+    margin: 0; 
+    padding: 0; 
+    font-size: 16px; 
+    text-align: left;
+}
+.waveform-header div {
+    font-size: 14px;
+}
+#waveformCanvas {
+    width: 100%;
+    height: 150px;
+    background-color: var(--scope-bg-color);
+}
+
 
 /* --- ベクトルスコープ専用のスタイル --- */
 #vectorscopeCard {
@@ -339,6 +388,36 @@ color: var(--text-color-subtle);
 font-family: var(--font-body);
 }
 
+/* ★★★ 新規追加: スポイト情報ウィンドウ ★★★ */
+#eyedropperInfo {
+    position: fixed;
+    background-color: rgba(30, 30, 30, 0.85);
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 5px;
+    font-size: 12px;
+    z-index: 2000;
+    pointer-events: none;
+    display: none;
+    font-family: var(--font-futura);
+    border: 1px solid #fff;
+    backdrop-filter: blur(5px);
+}
+#eyedropperInfo .info-line {
+    display: flex;
+    justify-content: space-between;
+}
+#eyedropperInfo .info-label {
+    color: #aaa;
+    margin-right: 10px;
+    min-width: 30px;
+}
+#eyedropperInfo .info-value {
+    color: #fff;
+    font-weight: 600;
+}
+
+
 /* コピーツールチップ */
 .copy-tooltip {
 position: fixed;
@@ -356,9 +435,7 @@ transition: opacity 0.3s ease;
 opacity: 1;
 }
 
-/* ★★★★★ ここからレスポンシブ対応のための追記 ★★★★★ */
-
-/* 768px以下の画面サイズ（タブレット・スマートフォン縦向き）での調整 */
+/* ★★★ レスポンシブ対応 ★★★ */
 @media (max-width: 768px) {
     body {
         padding: 20px 15px; /* 全体の余白を小さく */
@@ -400,6 +477,15 @@ opacity: 1;
     .right-panel {
         padding: 0;
     }
+    
+    #zebraControls {
+        font-size: 12px;
+        padding: 8px;
+        flex-wrap: wrap;
+    }
+    #zebraControls input[type="number"] {
+        width: 45px;
+    }
 
     .hist-label {
         font-size: 18px;
@@ -417,6 +503,13 @@ opacity: 1;
 
     .result-value {
         font-size: 18px;
+    }
+    
+    .waveform-header div {
+        font-size: 12px;
+    }
+    #waveformCanvas {
+        height: 120px;
     }
 
     /* ベクトルスコープ */
@@ -447,7 +540,6 @@ opacity: 1;
         padding: 15px;
     }
 }
-/* ★★★★★ レスポンシブ対応のための追記 終了 ★★★★★ */
 </style>
 </head>
 <body>
@@ -463,68 +555,94 @@ opacity: 1;
 <div id="analysisContainer" style="display: none;">
 
 <div class="left-panel">
-<img id="resultImagePreview" style="max-width: 100%; height: auto; margin-bottom: 20px;" alt="解析対象画像">
-<div id="imagePlaceholder">画像をアップロードしてください。</div>
+    
+    <canvas id="resultImagePreview"></canvas>
+    
+    <div id="imagePlaceholder">画像をアップロードしてください。</div>
 
-<p class="hist-label">ヒストグラム</p>
-<canvas id="histogramCanvas"></canvas>
+    <div id="zebraControls" style="display: none;">
+        <label for="zebraToggle">ゼブラパターン (輝度)</label>
+        <input type="checkbox" id="zebraToggle">
+        
+        <label for="zebraThreshold">閾値:</label>
+        <input type="number" id="zebraThreshold" value="90" min="0" max="100" step="1">
+        <span>%</span>
+    </div>
+
+    <p class="hist-label">ヒストグラム</p>
+    <canvas id="histogramCanvas"></canvas>
 </div>
 
 
 <div class="right-panel">
-<div class="result-item" data-copy-target="blackRatio">
-<span class="result-label">黒の割合:</span>
-<span class="result-value" id="blackRatioValue">--</span>
-</div>
-<div class="result-item" data-copy-target="whiteRatio">
-<span class="result-label">白の割合:</span>
-<span class="result-value" id="whiteRatioValue">--</span>
-</div>
-<div class="result-item" data-copy-target="lightColor">
-<span class="result-label">最も明るい色:</span>
-<span class="result-value" id="lightColorValue">#FFFFFF</span>
-<div class="color-swatch" id="lightColorSwatch"></div>
-</div>
-<div class="result-item" data-copy-target="darkColor">
-<span class="result-label">最も暗い色:</span>
-<span class="result-value" id="darkColorValue">#000000</span>
-<div class="color-swatch" id="darkColorSwatch"></div>
-</div>
-<div class="result-item" data-copy-target="contrastRatio">
-<span class="result-label">コントラスト比:</span>
-<span class="result-value" id="contrastRatioValue">--:1</span>
-</div>
 
-<div id="vectorscopeCard">
-    <p class="hist-label" style="margin-top: 0; padding-top: 0; font-size: 16px;">ベクトルスコープ (Cr/Cb)</p>
-    <div id="vectorscopeWrapper">
-        <canvas id="vectorscopeCanvas"></canvas>
+    <div class="result-item" data-copy-target="blackRatio">
+        <span class="result-label">黒の割合:</span>
+        <span class="result-value" id="blackRatioValue">--</span>
     </div>
-    <div class="scope-data-display">
-        <div class="scope-data-item">
-            <span class="scope-data-label">R-Y (Cr) Max</span>
-            <span class="scope-data-value" id="crMaxValue">--</span>
+    <div class="result-item" data-copy-target="whiteRatio">
+        <span class="result-label">白の割合:</span>
+        <span class="result-value" id="whiteRatioValue">--</span>
+    </div>
+    <div class="result-item" data-copy-target="lightColor">
+        <span class="result-label">最も明るい色:</span>
+        <span class="result-value" id="lightColorValue">#FFFFFF</span>
+        <div class="color-swatch" id="lightColorSwatch"></div>
+    </div>
+    <div class="result-item" data-copy-target="darkColor">
+        <span class="result-label">最も暗い色:</span>
+        <span class="result-value" id="darkColorValue">#000000</span>
+        <div class="color-swatch" id="darkColorSwatch"></div>
+    </div>
+    <div class="result-item" data-copy-target="contrastRatio">
+        <span class="result-label">コントラスト比:</span>
+        <span class="result-value" id="contrastRatioValue">--:1</span>
+    </div>
+
+    <div class="waveform-container">
+        <div class="waveform-header">
+            <span class="hist-label">波形モニター</span>
+            <div>
+                <input type="radio" id="waveModeLuma" name="waveMode" value="Luma" checked>
+                <label for="waveModeLuma">輝度</label>
+                <input type="radio" id="waveModeRGB" name="waveMode" value="RGB">
+                <label for="waveModeRGB">RGB</label>
+            </div>
         </div>
-        <div class="scope-data-item">
-            <span class="scope-data-label">B-Y (Cb) Max</span>
-            <span class="scope-data-value" id="cbMaxValue">--</span>
+        <canvas id="waveformCanvas"></canvas>
+    </div>
+
+    <div id="vectorscopeCard">
+        <p class="hist-label" style="margin-top: 0; padding-top: 0; font-size: 16px;">ベクトルスコープ (Cr/Cb)</p>
+        <div id="vectorscopeWrapper">
+            <canvas id="vectorscopeCanvas"></canvas>
         </div>
-        <div class="scope-data-item">
-            <span class="scope-data-label">Saturation Max</span>
-            <span class="scope-data-value" id="satMaxValue">--</span>
+        <div class="scope-data-display">
+            <div class="scope-data-item">
+                <span class="scope-data-label">R-Y (Cr) Max</span>
+                <span class="scope-data-value" id="crMaxValue">--</span>
+            </div>
+            <div class="scope-data-item">
+                <span class="scope-data-label">B-Y (Cb) Max</span>
+                <span class="scope-data-value" id="cbMaxValue">--</span>
+            </div>
+            <div class="scope-data-item">
+                <span class="scope-data-label">Saturation Max</span>
+                <span class="scope-data-value" id="satMaxValue">--</span>
+            </div>
         </div>
     </div>
-</div>
-<div id="processedImagesArea">
-<div class="processed-image-card">
-<canvas id="binaryCanvas" data-filename="binary_image.png"></canvas>
-<p>二値化画像</p>
-</div>
-<div class="processed-image-card">
-<canvas id="grayscaleCanvas" data-filename="grayscale_image.png"></canvas>
-<p>グレースケール画像</p>
-</div>
-</div>
+
+    <div id="processedImagesArea">
+        <div class="processed-image-card">
+            <canvas id="binaryCanvas" data-filename="binary_image.png"></canvas>
+            <p>二値化画像</p>
+        </div>
+        <div class="processed-image-card">
+            <canvas id="grayscaleCanvas" data-filename="grayscale_image.png"></canvas>
+            <p>グレースケール画像</p>
+        </div>
+    </div>
 
 </div>
 </div>
@@ -532,6 +650,25 @@ opacity: 1;
 <footer>
 <p>Created by Sabiasagi</p>
 </footer>
+
+<div id="eyedropperInfo">
+    <div class="info-line">
+        <span class="info-label">POS:</span>
+        <span class="info-value" id="spotPos">--</span>
+    </div>
+    <div class="info-line">
+        <span class="info-label">HEX:</span>
+        <span class="info-value" id="spotHex">--</span>
+    </div>
+    <div class="info-line">
+        <span class="info-label">RGB:</span>
+        <span class="info-value" id="spotRGB">--</span>
+    </div>
+    <div class="info-line">
+        <span class="info-label">LUM:</span>
+        <span class="info-value" id="spotLum">--</span>
+    </div>
+</div>
 
 <div id="copyTooltip" class="copy-tooltip">コピーしました！</div>
 
@@ -541,7 +678,7 @@ const DOM = {
 initialDropArea: document.getElementById('initialDropArea'),
 initialFileInput: document.getElementById('initialFileInput'),
 analysisContainer: document.getElementById('analysisContainer'),
-resultImagePreview: document.getElementById('resultImagePreview'),
+resultImagePreview: document.getElementById('resultImagePreview'), // ★ Canvasに変更
 imagePlaceholder: document.getElementById('imagePlaceholder'),
 histogramCanvas: document.getElementById('histogramCanvas'),
 binaryCanvas: document.getElementById('binaryCanvas'),
@@ -559,25 +696,36 @@ swatches: {
 lightColor: document.getElementById('lightColorSwatch'),
 darkColor: document.getElementById('darkColorSwatch')
 },
-scopeValues: { // ★ 新規追加: スコープ計測値
+scopeValues: {
     crMax: document.getElementById('crMaxValue'),
     cbMax: document.getElementById('cbMaxValue'),
     satMax: document.getElementById('satMaxValue')
-}
+},
+// ★ 新機能DOM
+zebraControls: document.getElementById('zebraControls'),
+zebraToggle: document.getElementById('zebraToggle'),
+zebraThreshold: document.getElementById('zebraThreshold'),
+eyedropperInfo: document.getElementById('eyedropperInfo'),
+spotPos: document.getElementById('spotPos'),
+spotHex: document.getElementById('spotHex'),
+spotRGB: document.getElementById('spotRGB'),
+spotLum: document.getElementById('spotLum'),
+waveformCanvas: document.getElementById('waveformCanvas'),
+waveModeLuma: document.getElementById('waveModeLuma'),
+waveModeRGB: document.getElementById('waveModeRGB')
 };
 
-let currentImage = null; // 画像オブジェクトを保持して再利用
+// ★ グローバル変数 (画像データとCanvasコンテキスト)
+let currentImage = null; // 画像オブジェクト
+let currentImageData = null; // フル解像度のピクセルデータ (ImageData)
+let previewCtx = DOM.resultImagePreview.getContext('2d');
 
 // --- 2. イベントリスナー登録 ---
-// ドロップエリアクリック
+// ドロップエリア
 DOM.initialDropArea.addEventListener('click', () => DOM.initialFileInput.click());
-
-// ファイル選択時
 DOM.initialFileInput.addEventListener('change', e => {
 if (e.target.files.length > 0) handleFile(e.target.files[0]);
 });
-
-// ドラッグ&ドロップ処理の統合
 ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
 DOM.initialDropArea.addEventListener(eventName, preventDefaults, false);
 });
@@ -598,15 +746,27 @@ handleFile(files[0]);
 }
 }
 
-// コピー機能の登録
+// コピー機能
 document.querySelectorAll('.result-item').forEach(item => {
 item.addEventListener('click', copyTextToClipboard);
 });
 
-// ダウンロード機能の登録
+// ダウンロード機能
 [DOM.binaryCanvas, DOM.grayscaleCanvas].forEach(canvas => {
 canvas.addEventListener('click', () => downloadCanvasImage(canvas, canvas.dataset.filename));
 });
+
+// ★ 新機能イベントリスナー
+// ゼブラ
+DOM.zebraToggle.addEventListener('change', onZebraChange);
+DOM.zebraThreshold.addEventListener('change', onZebraChange);
+// スポイト
+DOM.resultImagePreview.addEventListener('mousemove', handlePreviewMouseMove);
+DOM.resultImagePreview.addEventListener('mouseleave', handlePreviewMouseLeave);
+// 波形
+DOM.waveModeLuma.addEventListener('change', onWaveModeChange);
+DOM.waveModeRGB.addEventListener('change', onWaveModeChange);
+
 
 // --- 3. メインロジック ---
 
@@ -617,38 +777,59 @@ const reader = new FileReader();
 reader.onload = (e) => {
 const img = new Image();
 img.onload = () => {
-currentImage = img; // 画像オブジェクトを保存
+    currentImage = img; // ★ グローバルに画像オブジェクトを保存
 
-// UI切り替えとアニメーション
-DOM.initialDropArea.style.display = 'none';
-DOM.resultImagePreview.src = img.src;
-DOM.resultImagePreview.style.display = 'block';
-DOM.imagePlaceholder.style.display = 'none';
+    // UI切り替え
+    DOM.initialDropArea.style.display = 'none';
+    DOM.imagePlaceholder.style.display = 'none';
+    DOM.resultImagePreview.style.display = 'block';
+    DOM.zebraControls.style.display = 'flex'; // ゼブラコントロール表示
 
-DOM.analysisContainer.style.opacity = '0';
-DOM.analysisContainer.style.display = 'grid';
-setTimeout(() => { DOM.analysisContainer.style.opacity = '1'; }, 50);
+    DOM.analysisContainer.style.opacity = '0';
+    DOM.analysisContainer.style.display = 'grid';
+    setTimeout(() => { DOM.analysisContainer.style.opacity = '1'; }, 50);
 
-analyzeAndDisplayResults(img);
+    // ★ プレビューCanvasに画像を描画
+    drawPreviewCanvas();
+    
+    // ★ 解析を実行 (ピクセルデータをグローバルに保存)
+    analyzeAndDisplayResults(img);
 };
 img.src = e.target.result;
 };
 reader.readAsDataURL(file);
 }
 
+// ★ プレビューCanvasに描画する関数 (ゼブラOFF/ONのベースとして利用)
+function drawPreviewCanvas() {
+    if (!currentImage || !previewCtx) return;
+    const canvas = DOM.resultImagePreview;
+    
+    // CSSの幅にCanvasの解像度を合わせる
+    const aspectRatio = currentImage.height / currentImage.width;
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetWidth * aspectRatio;
+    
+    previewCtx.drawImage(currentImage, 0, 0, canvas.width, canvas.height);
+}
+
 function analyzeAndDisplayResults(img) {
+// フル解像度のピクセルデータを取得してグローバルに保存
 const tempCanvas = document.createElement('canvas');
 const tempCtx = tempCanvas.getContext('2d');
 tempCanvas.width = img.width;
 tempCanvas.height = img.height;
 tempCtx.drawImage(img, 0, 0);
 
-const imageData = tempCtx.getImageData(0, 0, img.width, img.height);
-const data = imageData.data;
+// ★ グローバル変数にピクセルデータを保存
+currentImageData = tempCtx.getImageData(0, 0, img.width, img.height);
+const data = currentImageData.data;
+
+// --- ここから既存の解析ロジック ---
 const histogram = new Array(256).fill(0);
 let minLum = 256, maxLum = -1;
 let minColor = [0,0,0], maxColor = [255,255,255];
-let maxCr = 0, maxCb = 0, maxSat = 0; // ★ 新規追加: 色度計測値
+let maxCr = 0, maxCb = 0, maxSat = 0; 
 
 for (let i = 0; i < data.length; i += 4) {
 const r = data[i], g = data[i+1], b = data[i+2];
@@ -696,7 +877,6 @@ DOM.swatches.lightColor.style.backgroundColor = lightestHex;
 DOM.swatches.darkColor.style.backgroundColor = darkestHex;
 DOM.values.contrastRatio.textContent = `${contrast.toFixed(2)}:1`;
 
-// ★ ベクトルスコープ値の更新
 DOM.scopeValues.crMax.textContent = maxCr.toFixed(4);
 DOM.scopeValues.cbMax.textContent = maxCb.toFixed(4);
 DOM.scopeValues.satMax.textContent = maxSat.toFixed(4);
@@ -706,11 +886,15 @@ animateHistogram(DOM.histogramCanvas, histogram, threshold);
 drawProcessedImage(DOM.binaryCanvas, img, threshold, 'binary');
 drawProcessedImage(DOM.grayscaleCanvas, img, threshold, 'grayscale');
 drawVectorscope(DOM.vectorscopeCanvas, data, maxCr, maxCb, maxSat); 
+
+// ★ 新機能: 波形モニターを初回描画
+drawWaveform();
+// ★ 新機能: ゼブラがもしONなら初回描画
+onZebraChange();
 }
 
 // 処理済み画像の描画を汎用化/統合
 function drawProcessedImage(canvas, originalImg, threshold, mode) {
-// Canvasの表示サイズを取得して、描画解像度を合わせる
 const cssWidth = canvas.offsetWidth;
 const cssHeight = canvas.offsetHeight; 
 canvas.width = cssWidth;
@@ -766,21 +950,16 @@ threshold = i;
 return threshold;
 }
 
-// ヒストグラムアニメーション (滑らかな線グラフ - 色と閾値を変更)
+// ヒストグラムアニメーション (変更なし)
 function animateHistogram(canvas, histogram, threshold) {
     const ctx = canvas.getContext('2d');
-    
-    // CSSで設定された表示サイズを取得
     const cssWidth = canvas.offsetWidth;
-    const cssHeight = canvas.offsetHeight; // 120px
-    
-    // Canvasの描画解像度をCSSの表示サイズに合わせる
+    const cssHeight = canvas.offsetHeight; 
     canvas.width = cssWidth; 
-    canvas.height = cssHeight; // 120px
-    
+    canvas.height = cssHeight; 
     const w = canvas.width;
-    const scaleHeight = 15; // 輝度スケールの高さ
-    const graphHeight = cssHeight - scaleHeight; // グラフ本体の高さ (105px)
+    const scaleHeight = 15; 
+    const graphHeight = cssHeight - scaleHeight;
     const max = Math.max(...histogram);
     
     const animationDuration = 800;
@@ -789,23 +968,16 @@ function animateHistogram(canvas, histogram, threshold) {
     function drawFrame(currentTime) {
         const elapsedTime = currentTime - startTime;
         const animationProgress = Math.min(1, elapsedTime / animationDuration);
-
-        ctx.clearRect(0, 0, w, cssHeight); // 全体をクリア
-
-        // 1. グラフ描画 (強調色)
+        ctx.clearRect(0, 0, w, cssHeight);
         ctx.beginPath();
-        ctx.moveTo(0, graphHeight); // グラフの底 (105px) からスタート
-
+        ctx.moveTo(0, graphHeight);
         const currentDrawRange = w * animationProgress;
-
         for (let i = 0; i < currentDrawRange; i++) {
             const histIndex = Math.floor(i / w * 256); 
             const histValue = histogram[histIndex] || 0; 
             const barHeight = (histValue / max) * graphHeight;
             const x = i;
-            const y = graphHeight - barHeight; // graphHeight (105)を基準に上へ
-
-            // 滑らかなベジェ曲線
+            const y = graphHeight - barHeight; 
             if (i > 0) {
                 const prevX = i - 1;
                 const prevHistIndex = Math.floor(prevX / w * 256);
@@ -815,106 +987,73 @@ function animateHistogram(canvas, histogram, threshold) {
                 ctx.lineTo(x, y);
             }
         }
-        
-        ctx.lineTo(currentDrawRange, graphHeight); // 底に戻る
-        
+        ctx.lineTo(currentDrawRange, graphHeight);
         ctx.fillStyle = 'var(--accent-color)';
         ctx.fill();
         ctx.strokeStyle = 'var(--accent-color)';
         ctx.lineWidth = 1;
         ctx.stroke();
-
-        // 2. 輝度スケール (下部)
-        const grad = ctx.createLinearGradient(0, 0, w, 0); // 横方向のグラデーション
+        const grad = ctx.createLinearGradient(0, 0, w, 0);
         grad.addColorStop(0, "#000000");
         grad.addColorStop(1, "#FFFFFF");
         ctx.fillStyle = grad;
-        ctx.fillRect(0, graphHeight, w, scaleHeight); // 105pxから15pxの高さで描画
-
-        // 3. 閾値の線 (アニメーションの最後に描画)
+        ctx.fillRect(0, graphHeight, w, scaleHeight);
         if (animationProgress === 1) {
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'; 
             ctx.lineWidth = 2;
             ctx.beginPath();
-            
             const thresholdX = threshold / 256 * w; 
             ctx.moveTo(thresholdX, 0);
-            ctx.lineTo(thresholdX, graphHeight + scaleHeight); // Canvas全体を縦断
+            ctx.lineTo(thresholdX, graphHeight + scaleHeight);
             ctx.stroke();
         }
-        
         if (animationProgress < 1) {
             requestAnimationFrame(drawFrame);
         }
     }
-
     requestAnimationFrame(drawFrame);
 }
 
-/**
- * ベクトルスコープを描画する
- * YCrCbの色度座標系に基づいて画像の色分布をプロットする
- * @param {HTMLCanvasElement} canvas - 描画対象のキャンバス要素
- * @param {Uint8ClampedArray} pixelData - 画像のピクセルデータ (R, G, B, A...)
- */
+// ベクトルスコープ (変更なし)
 function drawVectorscope(canvas, pixelData) {
     const ctx = canvas.getContext('2d');
     const size = 250; 
-    
-    // Canvasの物理サイズを設定 (CSSサイズと一致させることでスケーリングなしで描画)
     canvas.width = size;
     canvas.height = size;
-
     const center = size / 2;
-    const radius = size / 2 - 15; // 円の半径 (マージンのため少し小さく)
+    const radius = size / 2 - 15;
     const numPixels = pixelData.length / 4;
     const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--scope-grid-color').trim();
-
-    // 1. 背景と中心線の描画
     ctx.fillStyle = 'var(--scope-bg-color)'; 
     ctx.fillRect(0, 0, size, size);
-    
-    // 中心線 (十字線)
     ctx.strokeStyle = gridColor;
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(center, 0); ctx.lineTo(center, size); // 垂直
-    ctx.moveTo(0, center); ctx.lineTo(size, center); // 水平
+    ctx.moveTo(center, 0); ctx.lineTo(center, size);
+    ctx.moveTo(0, center); ctx.lineTo(size, center);
     ctx.stroke();
-
-    // 2. ターゲット円と目盛りの描画
     ctx.strokeStyle = gridColor;
     ctx.lineWidth = 1;
-    
-    // ターゲット円 (標準的な66%と100%の目盛り)
     ctx.beginPath();
     ctx.arc(center, center, radius * 0.66, 0, 2 * Math.PI); 
     ctx.stroke();
     ctx.beginPath();
-    ctx.arc(center, center, radius, 0, 2 * Math.PI); // 外枠
+    ctx.arc(center, center, radius, 0, 2 * Math.PI);
     ctx.stroke();
-
-    // 外側の30度ごとの時間軸目盛り (1枚目の画像を参考に)
     for (let i = 0; i < 360; i += 30) {
         const rad = i * (Math.PI / 180);
         const startR = radius * 1.05;
         const endR = radius * 1.15;
-        
         const x1 = center + startR * Math.sin(rad);
         const y1 = center - startR * Math.cos(rad);
         const x2 = center + endR * Math.sin(rad);
         const y2 = center - endR * Math.cos(rad);
-
-        ctx.lineWidth = i % 90 === 0 ? 1.5 : 1; // 90度ごとを太く
+        ctx.lineWidth = i % 90 === 0 ? 1.5 : 1;
         ctx.beginPath();
         ctx.moveTo(x1, y1);
         ctx.lineTo(x2, y2);
         ctx.stroke();
     }
-
-
-    // 3. ターゲット点 (R, M, B, C, G, Y) の描画
-    // 角度 (度) - 0度=上 (Y), 30=M, 90=B, 150=C, 210=G, 270=R (プロのビデオスコープ慣例)
     const primaryColors = [
         { label: 'Y', angle: 0, color: '#FFFF00' },
         { label: 'M', angle: 30, color: '#FF00FF' },  
@@ -923,104 +1062,62 @@ function drawVectorscope(canvas, pixelData) {
         { label: 'G', angle: 210, color: '#00FF00' }, 
         { label: 'R', angle: 330, color: '#FF0000' }  
     ];
-
     primaryColors.forEach(pc => {
-        // 角度をラジアンに変換し、Canvasの座標系に合わせる (0度が上)
         const rad = pc.angle * (Math.PI / 180);
-        
-        // ターゲット位置 (内側のマーカー) - 80%の位置に小さなターゲットボックスを配置
         const markerRadius = radius * 0.8; 
         const x_marker = center + markerRadius * Math.sin(rad);
         const y_marker = center - markerRadius * Math.cos(rad);
-
-        // ラベル位置 (外側のラベル)
-        const labelRadius = radius * 1.3; // 目盛りの外側
+        const labelRadius = radius * 1.3;
         const x_label = center + labelRadius * Math.sin(rad);
         const y_label = center - labelRadius * Math.cos(rad);
-
-        // ターゲットボックスの描画
         ctx.strokeStyle = gridColor;
         ctx.lineWidth = 1;
         const boxSize = 15;
         ctx.beginPath();
-        // ターゲットを示す四角形の線 (1枚目の画像を参考に)
         ctx.moveTo(x_marker - boxSize/2, y_marker - boxSize/2 + 5);
         ctx.lineTo(x_marker - boxSize/2, y_marker - boxSize/2);
         ctx.lineTo(x_marker - boxSize/2 + 5, y_marker - boxSize/2);
-        
         ctx.moveTo(x_marker + boxSize/2 - 5, y_marker - boxSize/2);
         ctx.lineTo(x_marker + boxSize/2, y_marker - boxSize/2);
         ctx.lineTo(x_marker + boxSize/2, y_marker - boxSize/2 + 5);
-
         ctx.moveTo(x_marker + boxSize/2, y_marker + boxSize/2 - 5);
         ctx.lineTo(x_marker + boxSize/2, y_marker + boxSize/2);
         ctx.lineTo(x_marker + boxSize/2 - 5, y_marker + boxSize/2);
-
         ctx.moveTo(x_marker - boxSize/2 + 5, y_marker + boxSize/2);
         ctx.lineTo(x_marker - boxSize/2, y_marker + boxSize/2);
         ctx.lineTo(x_marker - boxSize/2, y_marker + boxSize/2 - 5);
         ctx.stroke();
-        
-        // ラベルの描画
         ctx.fillStyle = gridColor;
         ctx.font = '12px var(--font-futura)';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(pc.label, x_label, y_label);
     });
-
-
-    // 4. ピクセルデータのプロット (YCrCb)
-    const maxChrominance = 0.5; // YCrCbの理論上の最大偏差
+    const maxChrominance = 0.5;
     const plotRadius = radius; 
-
-    // 描画スタイル: 点を重ねて明るくし、色分布を視覚化
-    ctx.globalCompositeOperation = 'lighter'; // 点を重ねて明るくする (見やすくするため)
-    
-    // スキップレートを設定 (パフォーマンスのため、全てのピクセルをプロットしない)
+    ctx.globalCompositeOperation = 'lighter';
     const skip = Math.max(1, Math.floor(numPixels / 100000)); 
-    
     for (let i = 0; i < pixelData.length; i += 4 * skip) {
         const r = pixelData[i] / 255;
         const g = pixelData[i+1] / 255;
         const b = pixelData[i+2] / 255;
-        
-        // 輝度 (Y) - ITU-R BT.601
         const yNorm = 0.299 * r + 0.587 * g + 0.114 * b;
-        
-        // 色度 (Cr/Cb)
         const cbNorm = b - yNorm; // Cb (Blue-Y) -> X軸
         const crNorm = r - yNorm; // Cr (Red-Y) -> Y軸
-
-        // 色度をキャンバス座標にマッピング: [-0.5, 0.5] を [-plotRadius, plotRadius] に変換
         const plotCb = cbNorm * (plotRadius / maxChrominance);
         const plotCr = crNorm * (plotRadius / maxChrominance);
-
-        // Canvas座標: X = Center + Cb, Y = Center - Cr 
-        // Cr (R-Y)はビデオスコープの慣例で下向きが正のため、Y軸を反転させる
         const plotX = center + plotCb; 
-        const plotY = center + plotCr; // 慣例的にB-Y(Cb)が水平、R-Y(Cr)が垂直下向きを正としてプロット
-
-        // 円内にあるかチェック
+        const plotY = center + plotCr;
         const dx = plotX - center;
         const dy = plotY - center;
         if (dx * dx + dy * dy <= plotRadius * plotRadius) {
-            
-            // 輝度と彩度に基づいた色を設定 (プロのスコープは点の色も表示するため)
-            const hue = Math.atan2(plotCr, plotCb) * (180 / Math.PI) + 180; // 0-360
-            const sat = Math.sqrt(dx*dx + dy*dy) / plotRadius; // 0-1
-            
-            // HSL/HSVからRGBへの変換関数が必要だが、ここでは単純な色相環で代用
+            const hue = Math.atan2(plotCr, plotCb) * (180 / Math.PI) + 180;
+            const sat = Math.sqrt(dx*dx + dy*dy) / plotRadius;
             ctx.fillStyle = `hsl(${hue}, 100%, ${50 + sat * 40}%)`; 
-            
-            // 描画 (点で表示)
             ctx.fillRect(plotX, plotY, 1.5, 1.5); 
         }
     }
-    
-    ctx.globalCompositeOperation = 'source-over'; // 元に戻す
-
-    // 5. 中心点の描画 (白)
+    ctx.globalCompositeOperation = 'source-over';
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(center - 1, center - 1, 3, 3);
 }
@@ -1034,9 +1131,7 @@ function getLuminance(hex) {
 const r = parseInt(hex.slice(1, 3), 16) / 255;
 const g = parseInt(hex.slice(3, 5), 16) / 255;
 const b = parseInt(hex.slice(5, 7), 16) / 255;
-
 const toLinear = (c) => (c <= 0.03928) ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-
 const L = 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
 return L;
 }
@@ -1053,33 +1148,17 @@ function copyTextToClipboard(e) {
 const item = e.currentTarget;
 const targetId = item.dataset.copyTarget;
 let textToCopy = '';
-
 switch(targetId) {
-case 'blackRatio':
-textToCopy = DOM.values.blackRatio.textContent.replace('%', '');
-break;
-case 'whiteRatio':
-textToCopy = DOM.values.whiteRatio.textContent.replace('%', '');
-break;
-case 'lightColor':
-textToCopy = DOM.values.lightColor.textContent;
-break;
-case 'darkColor':
-textToCopy = DOM.values.darkColor.textContent;
-break;
-case 'contrastRatio':
-textToCopy = DOM.values.contrastRatio.textContent.replace(':1', '');
-break;
+case 'blackRatio': textToCopy = DOM.values.blackRatio.textContent.replace('%', ''); break;
+case 'whiteRatio': textToCopy = DOM.values.whiteRatio.textContent.replace('%', ''); break;
+case 'lightColor': textToCopy = DOM.values.lightColor.textContent; break;
+case 'darkColor': textToCopy = DOM.values.darkColor.textContent; break;
+case 'contrastRatio': textToCopy = DOM.values.contrastRatio.textContent.replace(':1', ''); break;
 }
-
 if (textToCopy) {
-// navigator.clipboard.writeText()を使用 (iframe内ではセキュリティエラーになる可能性があるが、Canvas環境では許可される場合がある)
 navigator.clipboard.writeText(textToCopy).then(() => {
 showTooltip(e.clientX, e.clientY);
-}).catch(err => {
-console.error('コピーに失敗しました:', err);
-// フォールバックが必要な場合はここに記述
-});
+}).catch(err => console.error('コピーに失敗しました:', err));
 }
 }
 
@@ -1088,7 +1167,6 @@ function showTooltip(x, y) {
 DOM.copyTooltip.style.left = `${x + 10}px`;
 DOM.copyTooltip.style.top = `${y - 20}px`;
 DOM.copyTooltip.classList.add('show');
-
 clearTimeout(tooltipTimeout);
 tooltipTimeout = setTimeout(() => {
 DOM.copyTooltip.classList.remove('show');
@@ -1104,6 +1182,217 @@ link.click();
 URL.revokeObjectURL(link.href);
 }, 'image/png');
 }
+
+
+// --- 6. ★★★ 新機能の実装 ★★★ ---
+
+// ★ スポイト: プレビュー上をマウス移動
+function handlePreviewMouseMove(e) {
+    if (!currentImageData || !currentImage) return;
+
+    const canvas = DOM.resultImagePreview;
+    const rect = canvas.getBoundingClientRect();
+    
+    // Canvas上のマウス座標
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // 元画像での対応する座標を計算
+    const scaleX = currentImage.width / canvas.width;
+    const scaleY = currentImage.height / canvas.height;
+    
+    const imgX = Math.floor(x * scaleX);
+    const imgY = Math.floor(y * scaleY);
+
+    if (imgX < 0 || imgX >= currentImage.width || imgY < 0 || imgY >= currentImage.height) {
+        handlePreviewMouseLeave();
+        return;
+    }
+
+    // フル解像度のピクセルデータから値を取得
+    const index = (imgY * currentImageData.width + imgX) * 4;
+    const data = currentImageData.data;
+    const r = data[index];
+    const g = data[index+1];
+    const b = data[index+2];
+    
+    const lum = Math.round(0.299*r + 0.587*g + 0.114*b);
+    
+    // 情報ウィンドウを更新
+    DOM.spotPos.textContent = `${imgX}, ${imgY}`;
+    DOM.spotHex.textContent = rgbToHex(r, g, b);
+    DOM.spotRGB.textContent = `${r}, ${g}, ${b}`;
+    DOM.spotLum.textContent = lum;
+    
+    // ウィンドウをマウス位置に表示
+    DOM.eyedropperInfo.style.left = `${e.clientX + 15}px`;
+    DOM.eyedropperInfo.style.top = `${e.clientY}px`;
+    DOM.eyedropperInfo.style.display = 'block';
+}
+
+// ★ スポイト: マウスがプレビューから外れた
+function handlePreviewMouseLeave() {
+    DOM.eyedropperInfo.style.display = 'none';
+}
+
+// ★ ゼブラ: トグルまたは閾値が変更された
+function onZebraChange() {
+    if (!currentImage) return;
+    
+    if (DOM.zebraToggle.checked) {
+        drawZebraPattern();
+    } else {
+        drawPreviewCanvas(); // ゼブラを消して元の画像を描画
+    }
+}
+
+// ★ ゼブラ: パターンを描画
+function drawZebraPattern() {
+    if (!currentImageData || !previewCtx) return;
+
+    // まず元の画像をベースとして描画
+    drawPreviewCanvas(); 
+    
+    const canvas = DOM.resultImagePreview;
+    const ctx = previewCtx;
+    
+    const thresholdValue = parseInt(DOM.zebraThreshold.value, 10);
+    if (isNaN(thresholdValue)) return;
+    
+    const thresholdLuma = (thresholdValue / 100) * 255;
+    
+    // プレビューCanvasのピクセルデータを取得して操作
+    const canvasImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const canvasData = canvasImageData.data;
+    const canvasWidth = canvas.width;
+
+    // プレビューCanvasのピクセルを直接走査
+    for (let i = 0; i < canvasData.length; i += 4) {
+        const r = canvasData[i];
+        const g = canvasData[i+1];
+        const b = canvasData[i+2];
+        
+        // 輝度を計算
+        const lum = 0.299*r + 0.587*g + 0.114*b;
+        
+        if (lum > thresholdLuma) {
+            // 閾値を超えていたら、ゼブラ（縞模様）にする
+            const y = Math.floor((i / 4) / canvasWidth);
+            const x = (i / 4) % canvasWidth;
+            
+            if ((x + y) % 8 < 4) { // 縞模様のロジック
+                canvasData[i] = 255;   // R
+                canvasData[i+1] = 0;   // G
+                canvasData[i+2] = 0;   // B
+                canvasData[i+3] = 200; // Alpha
+            }
+        }
+    }
+    // 操作したピクセルデータをCanvasに戻す
+    ctx.putImageData(canvasImageData, 0, 0);
+}
+
+// ★ 波形: モードが変更された
+function onWaveModeChange() {
+    drawWaveform();
+}
+
+// ★ 波形: モニターを描画
+function drawWaveform() {
+    if (!currentImage) return;
+
+    const canvas = DOM.waveformCanvas;
+    const ctx = canvas.getContext('2d');
+    const mode = DOM.waveModeLuma.checked ? 'Luma' : 'RGB';
+    
+    // 波形モニターの解像度（固定）
+    const w = 256; // X軸（画像の幅に対応）
+    const h = 150; // Y軸（輝度/RGB値に対応）
+    canvas.width = w;
+    canvas.height = h;
+
+    // 画像を波形解像度に縮小してピクセルデータを取得
+    const tempWaveCanvas = document.createElement('canvas');
+    tempWaveCanvas.width = w;
+    tempWaveCanvas.height = h;
+    const tempWaveCtx = tempWaveCanvas.getContext('2d');
+    
+    tempWaveCtx.drawImage(currentImage, 0, 0, w, h);
+    const imageData = tempWaveCtx.getImageData(0, 0, w, h);
+    const data = imageData.data;
+
+    // 描画開始
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, w, h);
+
+    // 各X座標における、各輝度/RGB値のピクセル数をカウントする配列
+    const lumaBins = new Uint8Array(w * 256); // 輝度
+    const rBins = new Uint8Array(w * 256); // R
+    const gBins = new Uint8Array(w * 256); // G
+    const bBins = new Uint8Array(w * 256); // B
+
+    // ピクセルデータを走査してカウント
+    for (let i = 0; i < data.length; i += 4) {
+        const x = (i / 4) % w; // X座標 (0-255)
+        
+        const r = data[i];
+        const g = data[i+1];
+        const b = data[i+2];
+        const lum = Math.round(0.299*r + 0.587*g + 0.114*b);
+
+        lumaBins[x * 256 + lum]++;
+        rBins[x * 256 + r]++;
+        gBins[x * 256 + g]++;
+        bBins[x * 256 + b]++;
+    }
+    
+    const accentColor = 'var(--accent-color)';
+    
+    if (mode === 'Luma') {
+        // 輝度モード
+        const maxCount = Math.max(...lumaBins, 1);
+        drawWaveChannel(ctx, lumaBins, w, h, accentColor, maxCount);
+    } else { 
+        // RGBパレードモード
+        ctx.globalCompositeOperation = 'lighter'; // 色を重ねる
+        
+        // R, G, B をそれぞれ描画
+        drawWaveChannel(ctx, rBins, w, h, 'rgba(255, 0, 0, 0.7)', 10);
+        drawWaveChannel(ctx, gBins, w, h, 'rgba(0, 255, 0, 0.7)', 10);
+        drawWaveChannel(ctx, bBins, w, h, 'rgba(0, 0, 255, 0.7)', 10);
+
+        ctx.globalCompositeOperation = 'source-over'; // 元に戻す
+    }
+}
+
+// 波形描画のサブ関数
+function drawWaveChannel(ctx, bins, w, h, color, maxCount) {
+    maxCount = Math.min(maxCount, 10); // カウント数の上限
+    
+    const hScale = h / 256; // 輝度(0-255)をキャンバスの高さ(h)にマッピング
+
+    for (let x = 0; x < w; x++) {
+        for (let l = 0; l < 256; l++) { // l = 輝度/RGB値
+            const count = bins[x * 256 + l];
+            if (count > 0) {
+                // ピクセル数に応じて不透明度を変える
+                const opacity = Math.min(1, (count / maxCount) * 0.7 + 0.3);
+                
+                if (color.includes('rgba')) { // RGBモード
+                    ctx.globalAlpha = opacity;
+                    ctx.fillStyle = color;
+                } else { // 輝度モード
+                    ctx.fillStyle = `rgba(185, 82, 130, ${opacity})`;
+                }
+                
+                // Y軸は下が0, 上が255なので反転
+                ctx.fillRect(x, h - (l * hScale) - 1, 1, 1); 
+            }
+        }
+    }
+    ctx.globalAlpha = 1.0; // 不透明度をリセット
+}
+
 </script>
 </body>
 </html>
