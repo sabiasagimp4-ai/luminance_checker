@@ -3,74 +3,445 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>白黒比認識ツール (v6.3 Minimal Art)</title>
+<title>白黒比＆ベクトルスコープ認識ツール</title>
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant:wght@300;400;700&family=Montserrat:wght@300;400;700&family=Noto+Sans+JP:wght@300;400;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css"> 
+<script>
+// Typekit (フォント) の読み込み
+  (function(d) {
+    var config = {
+      kitId: 'ydf1tls',
+      scriptTimeout: 3000,
+      async: true
+    },
+    h=d.documentElement,t=setTimeout(function(){h.className=h.className.replace(/\bwf-loading\b/g,"")+" wf-inactive";},config.scriptTimeout),tk=d.createElement("script"),f=false,s=d.getElementsByTagName("script")[0],a;h.className+=" wf-loading";tk.src='https://use.typekit.net/'+config.kitId+'.js';tk.async=true;tk.onload=tk.onreadystatechange=function(){a=this.readyState;if(f||a&&a!="complete"&&a!="loaded")return;f=true;clearTimeout(t);try{Typekit.load(config)}catch(e){}};s.parentNode.insertBefore(tk,s)
+  })(document);
+</script>
+<style>
+/* 🎨 EIZO風ミニマルUI - ここを編集すれば全体の色とフォントが変わります！ */
+:root {
+/* --- 🎨 カラー設定 --- */
+--bg-color: #dbdbd7; 	 /* 全体の背景色 (淡いグレー) */
+--main-card-bg: #dbdbd7; 	 /* カードの背景色 (背景と同じ) */
+--text-color-primary: #111111; /* メインテキストの色 (黒) */
+--text-color-subtle: #111111; 	/* サブテキストの色 (グレー) */
+--accent-color: #b95282; 	 /* 強調色 (ヒストグラムやホバー) */
+--scope-grid-color: #a77d54; /* ベクトルスコープのグリッド色 (ゴールド系) */
+--scope-bg-color: #000000; /* ベクトルスコープの背景色 (黒) */
+
+/* --- 📐 罫線・デザイン設定 --- */
+--border-color: #111111; 	 /* 縁取りの色 (黒) */
+--card-radius: 8px; 	 	/* カードの角丸サイズ */
+--line-subtle: #111111; 	 	/* 細い線の色 */
+--line-strong: #111111; 	 	/* 強調線の色 */
+--threshold-color: #FFFFFF; 	/* 閾値の色 */
+
+/* --- 🖋️ フォント設定 --- */
+--font-heading: 'futura-100-book', "dnp-shuei-gothic-gin-std", sans-serif;
+--font-body: 'dnp-shuei-gothic-gin-std', 'futura-100-book', sans-serif;
+--font-futura: 'futura-100-book', sans-serif; /* ベクトルスコープの計測値用 */
+}
+
+body {
+font-family: var(--font-body);
+text-align: center;
+background: var(--bg-color);
+margin: 0;
+padding: 60px 40px;
+color: var(--text-color-primary);
+min-height: 100vh;
+box-sizing: border-box;
+display: flex;
+flex-direction: column;
+align-items: center;
+font-weight: 400; 
+}
+
+h2 {
+font-size: 36px;
+font-weight: 500; 
+color: var(--text-color-primary);
+margin-bottom: 5px;
+font-family: var(--font-heading);
+letter-spacing: 0.05em;
+}
+
+.sub-text {
+color: var(--text-color-subtle);
+font-size: 14px;
+font-family: var(--font-body);
+line-height: 1.7;
+margin-bottom: 50px;
+}
+
+/* --- ドロップ領域 (初期状態) --- */
+#initialDropArea {
+position: relative;
+width: 800px;
+height: 450px;
+background-color: var(--main-card-bg);
+display: flex;
+justify-content: center;
+align-items: center;
+margin: 0 auto;
+cursor: pointer;
+transition: background-color 0.3s ease, border-color 0.3s ease;
+
+border: 1px solid var(--border-color);
+border-radius: var(--card-radius);
+}
+
+#initialDropArea:hover, #initialDropArea.highlight {
+background-color: #be7792; 
+border-color: var(--accent-color); 
+}
+
+#initialDropArea p {
+color: var(--text-color-primary);
+font-size: 24px;
+font-weight: 500;
+font-family: var(--font-body);
+background-color: transparent;
+padding: 5px 15px;
+border: 1px solid var(--text-color-primary);
+line-height: 1;
+}
+
+#initialFileInput {
+display: none;
+}
+
+/* --- 解析結果コンテナ --- */
+@keyframes fadeIn {
+from { opacity: 0; transform: translateY(10px); }
+to { opacity: 1; transform: translateY(0); }
+}
+
+#analysisContainer {
+opacity: 0;
+animation: fadeIn 0.8s ease-out forwards;
+animation-delay: 0.1s;
+width: 100%;
+max-width: 1200px;
+margin-top: 40px;
+display: grid;
+grid-template-columns: 1fr 1fr;
+gap: 40px;
+align-items: start;
+}
+
+/* 左側の画像プレビューとヒストグラムのパネル */
+.left-panel {
+display: flex;
+flex-direction: column;
+background-color: var(--main-card-bg);
+padding: 30px;
+color: var(--text-color-primary);
+text-align: left;
+
+border: 1px solid var(--border-color);
+border-radius: var(--card-radius);
+}
+
+#imagePlaceholder {
+width: 100%;
+aspect-ratio: 16 / 9;
+background-color: #222222;
+display: flex;
+justify-content: center;
+align-items: center;
+font-size: 24px;
+font-weight: 500;
+color: var(--text-color-subtle);
+margin-bottom: 20px;
+}
+
+#resultImagePreview {
+width: 100%;
+height: auto;
+display: none;
+margin-bottom: 20px;
+border: none;
+}
+
+.hist-label {
+font-size: 20px;
+font-weight: 500;
+margin-top: 30px;
+margin-bottom: 15px;
+padding-top: 15px;
+text-align: center;
+font-family: var(--font-heading);
+}
+
+#histogramCanvas {
+width: 100%;
+height: 120px;
+display: block;
+background-color: var(--main-card-bg);
+}
+
+/* 右側の解析結果とコピーボタンのパネル */
+.right-panel {
+display: flex;
+flex-direction: column;
+background-color: var(--bg-color); 
+padding: 0;
+color: var(--text-color-primary);
+text-align: left;
+}
+
+.result-item {
+display: flex;
+align-items: center;
+padding: 10px 0;
+border-bottom: 1px solid var(--line-subtle);
+cursor: pointer;
+transition: background-color 0.2s ease;
+}
+
+.result-item:hover {
+background-color: #e2c0d3;
+}
+
+.result-label {
+width: 150px;
+font-size: 16px;
+font-weight: 400;
+color: var(--text-color-subtle);
+margin-right: 20px;
+}
+
+.result-value {
+font-size: 20px;
+font-weight: 500;
+font-family: 'Montserrat', var(--font-futura), sans-serif;
+flex-grow: 1;
+}
+
+.color-swatch {
+width: 20px;
+height: 20px;
+border: 1px solid var(--text-color-subtle);
+margin-left: 10px;
+}
+
+/* --- ベクトルスコープ専用のスタイル --- */
+#vectorscopeCard {
+margin-top: 20px;
+width: 100%;
+background-color: var(--main-card-bg); /* 周囲のカードと揃える */
+padding: 20px;
+display: flex;
+flex-direction: column;
+align-items: center;
+
+border: 1px solid var(--border-color);
+border-radius: var(--card-radius);
+}
+
+/* 正円を維持するためのラッパー */
+#vectorscopeWrapper {
+    width: 250px; 
+    height: 250px;
+    margin: 0 auto 10px auto;
+}
+
+#vectorscopeCanvas {
+    /* ラッパーに合わせて100%にし、正方形のラッパー内で正円に描画する */
+    width: 100%;
+    height: 100%;
+    display: block;
+    background-color: var(--scope-bg-color); 
+    border: none; /* 外側の枠は不要 */
+    border-radius: 50%; /* 正円 */
+    cursor: default;
+}
+
+.scope-data-display {
+    text-align: center;
+    width: 100%;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--line-subtle);
+    display: flex;
+    justify-content: space-around;
+    font-family: var(--font-futura);
+}
+
+.scope-data-item {
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.scope-data-label {
+    font-weight: 400;
+    color: var(--text-color-subtle);
+    display: block;
+    font-size: 12px;
+}
+
+.scope-data-value {
+    font-weight: 600;
+    color: var(--text-color-primary);
+    display: block;
+    font-size: 16px;
+}
+/* ------------------------------------- */
+
+/* 右下の二値化/グレースケール表示エリア */
+#processedImagesArea {
+margin-top: 40px;
+display: grid;
+grid-template-columns: 1fr 1fr;
+gap: 20px;
+background-color: var(--bg-color);
+padding: 0;
+}
+
+.processed-image-card {
+background-color: var(--main-card-bg);
+padding: 20px;
+display: flex;
+flex-direction: column;
+align-items: center;
+
+border: 1px solid var(--border-color);
+border-radius: var(--card-radius);
+}
+
+.processed-image-card canvas {
+width: 100%;
+height: auto;
+max-height: 200px;
+display: block;
+border: none;
+margin-bottom: 10px;
+cursor: pointer;
+transition: border-color 0.2s ease;
+}
+
+.processed-image-card canvas:hover {
+border-color: var(--line-strong);
+}
+
+.processed-image-card p {
+font-size: 14px;
+color: var(--text-color-subtle);
+margin: 0;
+}
+
+
+/* フッター */
+footer {
+margin-top: 80px;
+font-size: 12px;
+color: var(--text-color-subtle);
+font-family: var(--font-body);
+}
+
+/* コピーツールチップ */
+.copy-tooltip {
+position: fixed;
+background-color: #333;
+color: #fff;
+padding: 5px 10px;
+border-radius: 3px;
+font-size: 12px;
+z-index: 1000;
+pointer-events: none;
+opacity: 0;
+transition: opacity 0.3s ease;
+}
+.copy-tooltip.show {
+opacity: 1;
+}
+</style>
 </head>
 <body>
 
-<h2>白黒比認識ツール</h2>
-<p class="sub-text">画像の白黒の比率を認識してくれるツールです。<br>ヒストグラムとかがでます。</p>
+<h2>白黒比＆ベクトルスコープ認識ツール</h2>
+<p class="sub-text">画像の白黒の比率と色分布を認識してくれるツールです。<br>ヒストグラムとベクトルスコープが表示されます。</p>
 
 <div id="initialDropArea">
-  <input type="file" id="initialFileInput" accept="image/*">
-  <p>画像を D&D で追加</p>
+<input type="file" id="initialFileInput" accept="image/*">
+<p>画像を D&D で追加</p>
 </div>
 
 <div id="analysisContainer" style="display: none;">
-  
+
 <div class="left-panel">
-    <img id="resultImagePreview" style="max-width: 100%; height: auto; margin-bottom: 20px;" alt="解析対象画像">
-    <div id="imagePlaceholder">画像をアップロードしてください。</div>
-    
-    <p class="hist-label">ヒストグラム</p>
-    <canvas id="histogramCanvas"></canvas>
-  </div>
+<img id="resultImagePreview" style="max-width: 100%; height: auto; margin-bottom: 20px;" alt="解析対象画像">
+<div id="imagePlaceholder">画像をアップロードしてください。</div>
 
-  
+<p class="hist-label">ヒストグラム</p>
+<canvas id="histogramCanvas"></canvas>
+</div>
+
+
 <div class="right-panel">
-    <div class="result-item" data-copy-target="blackRatio">
-      <span class="result-label">黒の割合:</span>
-      <span class="result-value" id="blackRatioValue">--</span>
-    </div>
-    <div class="result-item" data-copy-target="whiteRatio">
-      <span class="result-label">白の割合:</span>
-      <span class="result-value" id="whiteRatioValue">--</span>
-    </div>
-    <div class="result-item" data-copy-target="lightColor">
-      <span class="result-label">最も明るい色:</span>
-      <span class="result-value" id="lightColorValue">#FFFFFF</span>
-      <div class="color-swatch" id="lightColorSwatch"></div>
-    </div>
-    <div class="result-item" data-copy-target="darkColor">
-      <span class="result-label">最も暗い色:</span>
-      <span class="result-value" id="darkColorValue">#000000</span>
-      <div class="color-swatch" id="darkColorSwatch"></div>
-    </div>
-    <div class="result-item" data-copy-target="contrastRatio">
-      <span class="result-label">コントラスト比:</span>
-      <span class="result-value" id="contrastRatioValue">--:1</span>
-    </div>
+<div class="result-item" data-copy-target="blackRatio">
+<span class="result-label">黒の割合:</span>
+<span class="result-value" id="blackRatioValue">--</span>
+</div>
+<div class="result-item" data-copy-target="whiteRatio">
+<span class="result-label">白の割合:</span>
+<span class="result-value" id="whiteRatioValue">--</span>
+</div>
+<div class="result-item" data-copy-target="lightColor">
+<span class="result-label">最も明るい色:</span>
+<span class="result-value" id="lightColorValue">#FFFFFF</span>
+<div class="color-swatch" id="lightColorSwatch"></div>
+</div>
+<div class="result-item" data-copy-target="darkColor">
+<span class="result-label">最も暗い色:</span>
+<span class="result-value" id="darkColorValue">#000000</span>
+<div class="color-swatch" id="darkColorSwatch"></div>
+</div>
+<div class="result-item" data-copy-target="contrastRatio">
+<span class="result-label">コントラスト比:</span>
+<span class="result-value" id="contrastRatioValue">--:1</span>
+</div>
 
-    
-<div id="processedImagesArea">
-      <div class="processed-image-card">
-        <canvas id="binaryCanvas" data-filename="binary_image.png"></canvas>
-        <p>二値化画像</p>
-      </div>
-      <div class="processed-image-card">
-        <canvas id="grayscaleCanvas" data-filename="grayscale_image.png"></canvas>
-        <p>グレースケール画像</p>
-      </div>
+<!-- ★ ベクトルスコープエリア (レイアウト変更により移動) -->
+<div id="vectorscopeCard">
+    <p class="hist-label" style="margin-top: 0; padding-top: 0; font-size: 16px;">ベクトルスコープ (Cr/Cb)</p>
+    <div id="vectorscopeWrapper">
+        <canvas id="vectorscopeCanvas"></canvas>
     </div>
-  </div>
+    <div class="scope-data-display">
+        <div class="scope-data-item">
+            <span class="scope-data-label">R-Y (Cr) Max</span>
+            <span class="scope-data-value" id="crMaxValue">--</span>
+        </div>
+        <div class="scope-data-item">
+            <span class="scope-data-label">B-Y (Cb) Max</span>
+            <span class="scope-data-value" id="cbMaxValue">--</span>
+        </div>
+        <div class="scope-data-item">
+            <span class="scope-data-label">Saturation Max</span>
+            <span class="scope-data-value" id="satMaxValue">--</span>
+        </div>
+    </div>
+</div>
+<!-- ★ ----------------------------- -->
+
+
+<div id="processedImagesArea">
+<div class="processed-image-card">
+<canvas id="binaryCanvas" data-filename="binary_image.png"></canvas>
+<p>二値化画像</p>
+</div>
+<div class="processed-image-card">
+<canvas id="grayscaleCanvas" data-filename="grayscale_image.png"></canvas>
+<p>グレースケール画像</p>
+</div>
+</div>
+
+</div>
 </div>
 
 <footer>
-  <p>Created by Sabiasagi</p>
+<p>Created by Sabiasagi</p>
 </footer>
 
 <div id="copyTooltip" class="copy-tooltip">コピーしました！</div>
@@ -78,26 +449,32 @@
 <script>
 // --- 1. 変数定義と初期設定 ---
 const DOM = {
-    initialDropArea: document.getElementById('initialDropArea'),
-    initialFileInput: document.getElementById('initialFileInput'),
-    analysisContainer: document.getElementById('analysisContainer'),
-    resultImagePreview: document.getElementById('resultImagePreview'),
-    imagePlaceholder: document.getElementById('imagePlaceholder'),
-    histogramCanvas: document.getElementById('histogramCanvas'),
-    binaryCanvas: document.getElementById('binaryCanvas'),
-    grayscaleCanvas: document.getElementById('grayscaleCanvas'),
-    copyTooltip: document.getElementById('copyTooltip'),
-    values: {
-        blackRatio: document.getElementById('blackRatioValue'),
-        whiteRatio: document.getElementById('whiteRatioValue'),
-        lightColor: document.getElementById('lightColorValue'),
-        darkColor: document.getElementById('darkColorValue'),
-        contrastRatio: document.getElementById('contrastRatioValue')
-    },
-    swatches: {
-        lightColor: document.getElementById('lightColorSwatch'),
-        darkColor: document.getElementById('darkColorSwatch')
-    }
+initialDropArea: document.getElementById('initialDropArea'),
+initialFileInput: document.getElementById('initialFileInput'),
+analysisContainer: document.getElementById('analysisContainer'),
+resultImagePreview: document.getElementById('resultImagePreview'),
+imagePlaceholder: document.getElementById('imagePlaceholder'),
+histogramCanvas: document.getElementById('histogramCanvas'),
+binaryCanvas: document.getElementById('binaryCanvas'),
+grayscaleCanvas: document.getElementById('grayscaleCanvas'),
+vectorscopeCanvas: document.getElementById('vectorscopeCanvas'), 
+copyTooltip: document.getElementById('copyTooltip'),
+values: {
+blackRatio: document.getElementById('blackRatioValue'),
+whiteRatio: document.getElementById('whiteRatioValue'),
+lightColor: document.getElementById('lightColorValue'),
+darkColor: document.getElementById('darkColorValue'),
+contrastRatio: document.getElementById('contrastRatioValue')
+},
+swatches: {
+lightColor: document.getElementById('lightColorSwatch'),
+darkColor: document.getElementById('darkColorSwatch')
+},
+scopeValues: { // ★ 新規追加: スコープ計測値
+    crMax: document.getElementById('crMaxValue'),
+    cbMax: document.getElementById('cbMaxValue'),
+    satMax: document.getElementById('satMaxValue')
+}
 };
 
 let currentImage = null; // 画像オブジェクトを保持して再利用
@@ -108,324 +485,535 @@ DOM.initialDropArea.addEventListener('click', () => DOM.initialFileInput.click()
 
 // ファイル選択時
 DOM.initialFileInput.addEventListener('change', e => {
-  if (e.target.files.length > 0) handleFile(e.target.files[0]);
+if (e.target.files.length > 0) handleFile(e.target.files[0]);
 });
 
 // ドラッグ&ドロップ処理の統合
 ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-  DOM.initialDropArea.addEventListener(eventName, preventDefaults, false);
+DOM.initialDropArea.addEventListener(eventName, preventDefaults, false);
 });
 DOM.initialDropArea.addEventListener('dragenter', () => DOM.initialDropArea.classList.add('highlight'), false);
 DOM.initialDropArea.addEventListener('dragleave', () => DOM.initialDropArea.classList.remove('highlight'), false);
 DOM.initialDropArea.addEventListener('drop', handleDrop, false);
 
 function preventDefaults(e) {
-  e.preventDefault();
-  e.stopPropagation();
+e.preventDefault();
+e.stopPropagation();
 }
 
 function handleDrop(e) {
-  const files = e.dataTransfer.files;
-  if (files.length > 0) {
-    DOM.initialDropArea.classList.remove('highlight');
-    handleFile(files[0]);
-  }
+const files = e.dataTransfer.files;
+if (files.length > 0) {
+DOM.initialDropArea.classList.remove('highlight');
+handleFile(files[0]);
+}
 }
 
 // コピー機能の登録
 document.querySelectorAll('.result-item').forEach(item => {
-  item.addEventListener('click', copyTextToClipboard);
+item.addEventListener('click', copyTextToClipboard);
 });
 
 // ダウンロード機能の登録
 [DOM.binaryCanvas, DOM.grayscaleCanvas].forEach(canvas => {
-    canvas.addEventListener('click', () => downloadCanvasImage(canvas, canvas.dataset.filename));
+canvas.addEventListener('click', () => downloadCanvasImage(canvas, canvas.dataset.filename));
 });
 
 // --- 3. メインロジック ---
 
 function handleFile(file) {
-  if (!file.type.startsWith('image/')) return;
+if (!file.type.startsWith('image/')) return;
 
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const img = new Image();
-    img.onload = () => {
-      currentImage = img; // 画像オブジェクトを保存
-      
-      // UI切り替えとアニメーション
-      DOM.initialDropArea.style.display = 'none';
-      DOM.resultImagePreview.src = img.src;
-      DOM.resultImagePreview.style.display = 'block';
-      DOM.imagePlaceholder.style.display = 'none';
+const reader = new FileReader();
+reader.onload = (e) => {
+const img = new Image();
+img.onload = () => {
+currentImage = img; // 画像オブジェクトを保存
 
-      DOM.analysisContainer.style.opacity = '0';
-      DOM.analysisContainer.style.display = 'grid';
-      setTimeout(() => { DOM.analysisContainer.style.opacity = '1'; }, 50);
+// UI切り替えとアニメーション
+DOM.initialDropArea.style.display = 'none';
+DOM.resultImagePreview.src = img.src;
+DOM.resultImagePreview.style.display = 'block';
+DOM.imagePlaceholder.style.display = 'none';
 
-      analyzeAndDisplayResults(img);
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
+DOM.analysisContainer.style.opacity = '0';
+DOM.analysisContainer.style.display = 'grid';
+setTimeout(() => { DOM.analysisContainer.style.opacity = '1'; }, 50);
+
+analyzeAndDisplayResults(img);
+};
+img.src = e.target.result;
+};
+reader.readAsDataURL(file);
 }
 
 function analyzeAndDisplayResults(img) {
-  const tempCanvas = document.createElement('canvas');
-  const tempCtx = tempCanvas.getContext('2d');
-  tempCanvas.width = img.width;
-  tempCanvas.height = img.height;
-  tempCtx.drawImage(img, 0, 0);
+const tempCanvas = document.createElement('canvas');
+const tempCtx = tempCanvas.getContext('2d');
+tempCanvas.width = img.width;
+tempCanvas.height = img.height;
+tempCtx.drawImage(img, 0, 0);
 
-  const imageData = tempCtx.getImageData(0, 0, img.width, img.height);
-  const data = imageData.data;
-  const histogram = new Array(256).fill(0);
-  let minLum = 256, maxLum = -1;
-  let minColor = [0,0,0], maxColor = [255,255,255];
+const imageData = tempCtx.getImageData(0, 0, img.width, img.height);
+const data = imageData.data;
+const histogram = new Array(256).fill(0);
+let minLum = 256, maxLum = -1;
+let minColor = [0,0,0], maxColor = [255,255,255];
+let maxCr = 0, maxCb = 0, maxSat = 0; // ★ 新規追加: 色度計測値
 
-  for (let i = 0; i < data.length; i += 4) {
-    const r = data[i], g = data[i+1], b = data[i+2];
-    const lum = Math.round(0.299*r + 0.587*g + 0.114*b);
-    histogram[lum]++;
-    
-    if (lum < minLum) { minLum = lum; minColor = [r,g,b]; }
-    if (lum > maxLum) { maxLum = lum; maxColor = [r,g,b]; }
-  }
+for (let i = 0; i < data.length; i += 4) {
+const r = data[i], g = data[i+1], b = data[i+2];
+const rNorm = r / 255, gNorm = g / 255, bNorm = b / 255; // 0-1に正規化
+const lum = Math.round(0.299*r + 0.587*g + 0.114*b); // 輝度 (0-255)
+histogram[lum]++;
 
-  const threshold = otsuThreshold(histogram, img.width * img.height);
-  
-  let black = 0, white = 0;
-  for (let i = 0; i < 256; i++) {
-    if (i < threshold) black += histogram[i];
-    else white += histogram[i];
-  }
+if (lum < minLum) { minLum = lum; minColor = [r,g,b]; }
+if (lum > maxLum) { maxLum = lum; maxColor = [r,g,b]; }
 
-  const totalPixels = black + white;
-  const blackRatio = (black / totalPixels * 100).toFixed(2);
-  const whiteRatio = (white / totalPixels * 100).toFixed(2);
+// YCrCbの計算
+const yNorm = 0.299 * rNorm + 0.587 * gNorm + 0.114 * bNorm;
+const cbNorm = bNorm - yNorm; // B-Y
+const crNorm = rNorm - yNorm; // R-Y
+const satNorm = Math.sqrt(crNorm * crNorm + cbNorm * cbNorm); // 彩度
 
-  const darkestHex = rgbToHex(...minColor);
-  const lightestHex = rgbToHex(...maxColor);
-  const contrast = getContrastRatio(lightestHex, darkestHex);
+maxCr = Math.max(maxCr, Math.abs(crNorm));
+maxCb = Math.max(maxCb, Math.abs(cbNorm));
+maxSat = Math.max(maxSat, satNorm);
 
-  // UIの更新
-  DOM.values.blackRatio.textContent = `${blackRatio}%`;
-  DOM.values.whiteRatio.textContent = `${whiteRatio}%`;
-  DOM.values.lightColor.textContent = lightestHex;
-  DOM.values.darkColor.textContent = darkestHex;
-  DOM.swatches.lightColor.style.backgroundColor = lightestHex;
-  DOM.swatches.darkColor.style.backgroundColor = darkestHex;
-  DOM.values.contrastRatio.textContent = `${contrast.toFixed(2)}:1`;
+}
 
-  // 描画
-  animateHistogram(DOM.histogramCanvas, histogram, threshold);
-  drawProcessedImage(DOM.binaryCanvas, img, threshold, 'binary');
-  drawProcessedImage(DOM.grayscaleCanvas, img, threshold, 'grayscale');
+const threshold = otsuThreshold(histogram, img.width * img.height);
+
+let black = 0, white = 0;
+for (let i = 0; i < 256; i++) {
+if (i < threshold) black += histogram[i];
+else white += histogram[i];
+}
+
+const totalPixels = black + white;
+const blackRatio = (black / totalPixels * 100).toFixed(2);
+const whiteRatio = (white / totalPixels * 100).toFixed(2);
+
+const darkestHex = rgbToHex(...minColor);
+const lightestHex = rgbToHex(...maxColor);
+const contrast = getContrastRatio(lightestHex, darkestHex);
+
+// UIの更新
+DOM.values.blackRatio.textContent = `${blackRatio}%`;
+DOM.values.whiteRatio.textContent = `${whiteRatio}%`;
+DOM.values.lightColor.textContent = lightestHex;
+DOM.values.darkColor.textContent = darkestHex;
+DOM.swatches.lightColor.style.backgroundColor = lightestHex;
+DOM.swatches.darkColor.style.backgroundColor = darkestHex;
+DOM.values.contrastRatio.textContent = `${contrast.toFixed(2)}:1`;
+
+// ★ ベクトルスコープ値の更新
+DOM.scopeValues.crMax.textContent = maxCr.toFixed(4);
+DOM.scopeValues.cbMax.textContent = maxCb.toFixed(4);
+DOM.scopeValues.satMax.textContent = maxSat.toFixed(4);
+
+// 描画
+animateHistogram(DOM.histogramCanvas, histogram, threshold);
+drawProcessedImage(DOM.binaryCanvas, img, threshold, 'binary');
+drawProcessedImage(DOM.grayscaleCanvas, img, threshold, 'grayscale');
+drawVectorscope(DOM.vectorscopeCanvas, data, maxCr, maxCb, maxSat); 
 }
 
 // 処理済み画像の描画を汎用化/統合
 function drawProcessedImage(canvas, originalImg, threshold, mode) {
-    canvas.width = originalImg.width;
-    canvas.height = originalImg.height;
+// Canvasの表示サイズを取得して、描画解像度を合わせる
+const cssWidth = canvas.offsetWidth;
+const cssHeight = canvas.offsetHeight; 
+canvas.width = cssWidth;
+canvas.height = cssHeight;
 
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(originalImg, 0, 0);
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = true; 
+ctx.drawImage(originalImg, 0, 0, cssWidth, cssHeight); // Canvasのサイズに合わせて描画
 
-    const imageData = ctx.getImageData(0, 0, originalImg.width, originalImg.height);
-    const data = imageData.data;
+const imageData = ctx.getImageData(0, 0, cssWidth, cssHeight);
+const data = imageData.data;
 
-    for (let i = 0; i < data.length; i += 4) {
-      const r = data[i], g = data[i+1], b = data[i+2];
-      const lum = Math.round(0.299*r + 0.587*g + 0.114*b);
-      let color;
+for (let i = 0; i < data.length; i += 4) {
+const r = data[i], g = data[i+1], b = data[i+2];
+const lum = Math.round(0.299*r + 0.587*g + 0.114*b);
+let color;
 
-      if (mode === 'binary') {
-        color = lum < threshold ? 0 : 255;
-      } else { // grayscale
-        color = lum;
-      }
-      data[i] = data[i+1] = data[i+2] = color;
-    }
-    ctx.putImageData(imageData, 0, 0);
+if (mode === 'binary') {
+color = lum < threshold ? 0 : 255;
+} else { // grayscale
+color = lum;
+}
+data[i] = data[i+1] = data[i+2] = color;
+}
+ctx.putImageData(imageData, 0, 0);
 }
 
 
 // --- 4. ユーティリティ関数 ---
 
 function otsuThreshold(hist, total) {
-  let sum = 0;
-  for (let i = 0; i < 256; i++) sum += i * hist[i];
+let sum = 0;
+for (let i = 0; i < 256; i++) sum += i * hist[i];
 
-  let sumB = 0, wB = 0, wF = 0, varMax = 0, threshold = 0;
+let sumB = 0, wB = 0, wF = 0, varMax = 0, threshold = 0;
 
-  for (let i = 0; i < 256; i++) {
-    wB += hist[i];
-    if (wB === 0) continue;
-    wF = total - wB;
-    if (wF === 0) break;
-    sumB += i * hist[i];
-    
-    const mB = sumB / wB;
-    const mF = (sum - sumB) / wF;
-    const varBetween = wB * wF * (mB - mF) ** 2;
+for (let i = 0; i < 256; i++) {
+wB += hist[i];
+if (wB === 0) continue;
+wF = total - wB;
+if (wF === 0) break;
+sumB += i * hist[i];
 
-    if (varBetween > varMax) {
-      varMax = varBetween;
-      threshold = i;
-    }
-  }
-  return threshold;
+const mB = sumB / wB;
+const mF = (sum - sumB) / wF;
+const varBetween = wB * wF * (mB - mF) ** 2;
+
+if (varBetween > varMax) {
+varMax = varBetween;
+threshold = i;
+}
+}
+return threshold;
 }
 
 // ヒストグラムアニメーション (滑らかな線グラフ - 色と閾値を変更)
 function animateHistogram(canvas, histogram, threshold) {
-  const ctx = canvas.getContext('2d');
-  canvas.width = 256; // 内部解像度を固定
-  canvas.height = 120; // 内部解像度を固定
-  const w = canvas.width;
-  const h = canvas.height - 15;
-  const max = Math.max(...histogram);
-  
-  const animationDuration = 800;
-  const startTime = performance.now();
+    const ctx = canvas.getContext('2d');
+    
+    // CSSで設定された表示サイズを取得
+    const cssWidth = canvas.offsetWidth;
+    const cssHeight = canvas.offsetHeight; // 120px
+    
+    // Canvasの描画解像度をCSSの表示サイズに合わせる
+    canvas.width = cssWidth; 
+    canvas.height = cssHeight; // 120px
+    
+    const w = canvas.width;
+    const scaleHeight = 15; // 輝度スケールの高さ
+    const graphHeight = cssHeight - scaleHeight; // グラフ本体の高さ (105px)
+    const max = Math.max(...histogram);
+    
+    const animationDuration = 800;
+    const startTime = performance.now();
 
-  function drawFrame(currentTime) {
-    const elapsedTime = currentTime - startTime;
-    const animationProgress = Math.min(1, elapsedTime / animationDuration);
+    function drawFrame(currentTime) {
+        const elapsedTime = currentTime - startTime;
+        const animationProgress = Math.min(1, elapsedTime / animationDuration);
 
-    ctx.clearRect(0, 0, w, canvas.height); // 全体をクリア
+        ctx.clearRect(0, 0, w, cssHeight); // 全体をクリア
 
-    // グラフ描画 (原色青)
-    ctx.beginPath();
-    ctx.moveTo(0, h);
+        // 1. グラフ描画 (強調色)
+        ctx.beginPath();
+        ctx.moveTo(0, graphHeight); // グラフの底 (105px) からスタート
 
-    const currentDrawRange = 256 * animationProgress;
+        const currentDrawRange = w * animationProgress;
 
-    for (let i = 0; i < currentDrawRange; i++) {
-      const barHeight = (histogram[i] / max) * h;
-      const x = i;
-      const y = h - barHeight;
-      
-      // シンプルな曲線補間 (Quadratic Bezier)
-      if (i === 0) {
-        ctx.lineTo(x, y);
-      } else {
-        const prevX = i - 1;
-        const prevY = h - (histogram[prevX] / max) * h;
-        ctx.bezierCurveTo(prevX + (x - prevX) * 0.5, prevY, x - (x - prevX) * 0.5, y, x, y);
-      }
+        for (let i = 0; i < currentDrawRange; i++) {
+            const histIndex = Math.floor(i / w * 256); 
+            const histValue = histogram[histIndex] || 0; 
+            const barHeight = (histValue / max) * graphHeight;
+            const x = i;
+            const y = graphHeight - barHeight; // graphHeight (105)を基準に上へ
+
+            // 滑らかなベジェ曲線
+            if (i > 0) {
+                const prevX = i - 1;
+                const prevHistIndex = Math.floor(prevX / w * 256);
+                const prevY = graphHeight - (histogram[prevHistIndex] / max) * graphHeight;
+                ctx.bezierCurveTo(prevX + (x - prevX) * 0.5, prevY, x - (x - prevX) * 0.5, y, x, y);
+            } else {
+                ctx.lineTo(x, y);
+            }
+        }
+        
+        ctx.lineTo(currentDrawRange, graphHeight); // 底に戻る
+        
+        ctx.fillStyle = 'var(--accent-color)';
+        ctx.fill();
+        ctx.strokeStyle = 'var(--accent-color)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // 2. 輝度スケール (下部)
+        const grad = ctx.createLinearGradient(0, 0, w, 0); // 横方向のグラデーション
+        grad.addColorStop(0, "#000000");
+        grad.addColorStop(1, "#FFFFFF");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, graphHeight, w, scaleHeight); // 105pxから15pxの高さで描画
+
+        // 3. 閾値の線 (アニメーションの最後に描画)
+        if (animationProgress === 1) {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'; 
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            
+            const thresholdX = threshold / 256 * w; 
+            ctx.moveTo(thresholdX, 0);
+            ctx.lineTo(thresholdX, graphHeight + scaleHeight); // Canvas全体を縦断
+            ctx.stroke();
+        }
+        
+        if (animationProgress < 1) {
+            requestAnimationFrame(drawFrame);
+        }
     }
+
+    requestAnimationFrame(drawFrame);
+}
+
+/**
+ * ベクトルスコープを描画する
+ * YCrCbの色度座標系に基づいて画像の色分布をプロットする
+ * @param {HTMLCanvasElement} canvas - 描画対象のキャンバス要素
+ * @param {Uint8ClampedArray} pixelData - 画像のピクセルデータ (R, G, B, A...)
+ */
+function drawVectorscope(canvas, pixelData) {
+    const ctx = canvas.getContext('2d');
+    const size = 250; 
     
-    // 終点を一番下に
-    ctx.lineTo(currentDrawRange, h);
+    // Canvasの物理サイズを設定 (CSSサイズと一致させることでスケーリングなしで描画)
+    canvas.width = size;
+    canvas.height = size;
+
+    const center = size / 2;
+    const radius = size / 2 - 15; // 円の半径 (マージンのため少し小さく)
+    const numPixels = pixelData.length / 4;
+    const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--scope-grid-color').trim();
+
+    // 1. 背景と中心線の描画
+    ctx.fillStyle = 'var(--scope-bg-color)'; 
+    ctx.fillRect(0, 0, size, size);
     
-    ctx.fillStyle = 'rgba(0, 0, 255, 0.6)'; // 半透明の原色青
-    ctx.fill();
-    ctx.strokeStyle = '#0000FF'; // 原色青の線
+    // 中心線 (十字線)
+    ctx.strokeStyle = gridColor;
     ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(center, 0); ctx.lineTo(center, size); // 垂直
+    ctx.moveTo(0, center); ctx.lineTo(size, center); // 水平
     ctx.stroke();
 
-    // 輝度スケール (下部)
-    const grad = ctx.createLinearGradient(0, h, w, h + 15);
-    grad.addColorStop(0, "#000000");
-    grad.addColorStop(1, "#FFFFFF");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, h, w, 15);
+    // 2. ターゲット円と目盛りの描画
+    ctx.strokeStyle = gridColor;
+    ctx.lineWidth = 1;
+    
+    // ターゲット円 (標準的な66%と100%の目盛り)
+    ctx.beginPath();
+    ctx.arc(center, center, radius * 0.66, 0, 2 * Math.PI); 
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(center, center, radius, 0, 2 * Math.PI); // 外枠
+    ctx.stroke();
 
-    // 閾値の線 (アニメーションの最後に描画 - 白の棒)
-    if (animationProgress === 1) {
-      ctx.strokeStyle = '#FFFFFF'; // 白
-      ctx.lineWidth = 2; // 少し太く
-      ctx.beginPath();
-      ctx.moveTo(threshold, 0);
-      ctx.lineTo(threshold, h);
-      ctx.stroke();
+    // 外側の30度ごとの時間軸目盛り (1枚目の画像を参考に)
+    for (let i = 0; i < 360; i += 30) {
+        const rad = i * (Math.PI / 180);
+        const startR = radius * 1.05;
+        const endR = radius * 1.15;
+        
+        const x1 = center + startR * Math.sin(rad);
+        const y1 = center - startR * Math.cos(rad);
+        const x2 = center + endR * Math.sin(rad);
+        const y2 = center - endR * Math.cos(rad);
+
+        ctx.lineWidth = i % 90 === 0 ? 1.5 : 1; // 90度ごとを太く
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+    }
+
+
+    // 3. ターゲット点 (R, M, B, C, G, Y) の描画
+    // 角度 (度) - 0度=上 (Y), 30=M, 90=B, 150=C, 210=G, 270=R (プロのビデオスコープ慣例)
+    const primaryColors = [
+        { label: 'Y', angle: 0, color: '#FFFF00' },
+        { label: 'M', angle: 30, color: '#FF00FF' },  
+        { label: 'B', angle: 90, color: '#0000FF' },  
+        { label: 'C', angle: 150, color: '#00FFFF' }, 
+        { label: 'G', angle: 210, color: '#00FF00' }, 
+        { label: 'R', angle: 330, color: '#FF0000' }  
+    ];
+
+    primaryColors.forEach(pc => {
+        // 角度をラジアンに変換し、Canvasの座標系に合わせる (0度が上)
+        const rad = pc.angle * (Math.PI / 180);
+        
+        // ターゲット位置 (内側のマーカー) - 80%の位置に小さなターゲットボックスを配置
+        const markerRadius = radius * 0.8; 
+        const x_marker = center + markerRadius * Math.sin(rad);
+        const y_marker = center - markerRadius * Math.cos(rad);
+
+        // ラベル位置 (外側のラベル)
+        const labelRadius = radius * 1.3; // 目盛りの外側
+        const x_label = center + labelRadius * Math.sin(rad);
+        const y_label = center - labelRadius * Math.cos(rad);
+
+        // ターゲットボックスの描画
+        ctx.strokeStyle = gridColor;
+        ctx.lineWidth = 1;
+        const boxSize = 15;
+        ctx.beginPath();
+        // ターゲットを示す四角形の線 (1枚目の画像を参考に)
+        ctx.moveTo(x_marker - boxSize/2, y_marker - boxSize/2 + 5);
+        ctx.lineTo(x_marker - boxSize/2, y_marker - boxSize/2);
+        ctx.lineTo(x_marker - boxSize/2 + 5, y_marker - boxSize/2);
+        
+        ctx.moveTo(x_marker + boxSize/2 - 5, y_marker - boxSize/2);
+        ctx.lineTo(x_marker + boxSize/2, y_marker - boxSize/2);
+        ctx.lineTo(x_marker + boxSize/2, y_marker - boxSize/2 + 5);
+
+        ctx.moveTo(x_marker + boxSize/2, y_marker + boxSize/2 - 5);
+        ctx.lineTo(x_marker + boxSize/2, y_marker + boxSize/2);
+        ctx.lineTo(x_marker + boxSize/2 - 5, y_marker + boxSize/2);
+
+        ctx.moveTo(x_marker - boxSize/2 + 5, y_marker + boxSize/2);
+        ctx.lineTo(x_marker - boxSize/2, y_marker + boxSize/2);
+        ctx.lineTo(x_marker - boxSize/2, y_marker + boxSize/2 - 5);
+        ctx.stroke();
+        
+        // ラベルの描画
+        ctx.fillStyle = gridColor;
+        ctx.font = '12px var(--font-futura)';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(pc.label, x_label, y_label);
+    });
+
+
+    // 4. ピクセルデータのプロット (YCrCb)
+    const maxChrominance = 0.5; // YCrCbの理論上の最大偏差
+    const plotRadius = radius; 
+
+    // 描画スタイル: 点を重ねて明るくし、色分布を視覚化
+    ctx.globalCompositeOperation = 'lighter'; // 点を重ねて明るくする (見やすくするため)
+    
+    // スキップレートを設定 (パフォーマンスのため、全てのピクセルをプロットしない)
+    const skip = Math.max(1, Math.floor(numPixels / 100000)); 
+    
+    for (let i = 0; i < pixelData.length; i += 4 * skip) {
+        const r = pixelData[i] / 255;
+        const g = pixelData[i+1] / 255;
+        const b = pixelData[i+2] / 255;
+        
+        // 輝度 (Y) - ITU-R BT.601
+        const yNorm = 0.299 * r + 0.587 * g + 0.114 * b;
+        
+        // 色度 (Cr/Cb)
+        const cbNorm = b - yNorm; // Cb (Blue-Y) -> X軸
+        const crNorm = r - yNorm; // Cr (Red-Y) -> Y軸
+
+        // 色度をキャンバス座標にマッピング: [-0.5, 0.5] を [-plotRadius, plotRadius] に変換
+        const plotCb = cbNorm * (plotRadius / maxChrominance);
+        const plotCr = crNorm * (plotRadius / maxChrominance);
+
+        // Canvas座標: X = Center + Cb, Y = Center - Cr 
+        // Cr (R-Y)はビデオスコープの慣例で下向きが正のため、Y軸を反転させる
+        const plotX = center + plotCb; 
+        const plotY = center + plotCr; // 慣例的にB-Y(Cb)が水平、R-Y(Cr)が垂直下向きを正としてプロット
+
+        // 円内にあるかチェック
+        const dx = plotX - center;
+        const dy = plotY - center;
+        if (dx * dx + dy * dy <= plotRadius * plotRadius) {
+            
+            // 輝度と彩度に基づいた色を設定 (プロのスコープは点の色も表示するため)
+            const hue = Math.atan2(plotCr, plotCb) * (180 / Math.PI) + 180; // 0-360
+            const sat = Math.sqrt(dx*dx + dy*dy) / plotRadius; // 0-1
+            
+            // HSL/HSVからRGBへの変換関数が必要だが、ここでは単純な色相環で代用
+            ctx.fillStyle = `hsl(${hue}, 100%, ${50 + sat * 40}%)`; 
+            
+            // 描画 (点で表示)
+            ctx.fillRect(plotX, plotY, 1.5, 1.5); 
+        }
     }
     
-    if (animationProgress < 1) {
-      requestAnimationFrame(drawFrame);
-    }
-  }
+    ctx.globalCompositeOperation = 'source-over'; // 元に戻す
 
-  requestAnimationFrame(drawFrame);
+    // 5. 中心点の描画 (白)
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(center - 1, center - 1, 3, 3);
 }
 
 
 function rgbToHex(r,g,b) {
-  return "#" + [r,g,b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+return "#" + [r,g,b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
 }
 
 function getLuminance(hex) {
-  const r = parseInt(hex.slice(1, 3), 16) / 255;
-  const g = parseInt(hex.slice(3, 5), 16) / 255;
-  const b = parseInt(hex.slice(5, 7), 16) / 255;
+const r = parseInt(hex.slice(1, 3), 16) / 255;
+const g = parseInt(hex.slice(3, 5), 16) / 255;
+const b = parseInt(hex.slice(5, 7), 16) / 255;
 
-  const toLinear = (c) => (c <= 0.03928) ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
-  
-  const L = 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
-  return L;
+const toLinear = (c) => (c <= 0.03928) ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+
+const L = 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+return L;
 }
 
 function getContrastRatio(hex1, hex2) {
-  const L1 = getLuminance(hex1);
-  const L2 = getLuminance(hex2);
-  return (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05);
+const L1 = getLuminance(hex1);
+const L2 = getLuminance(hex2);
+return (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05);
 }
 
 // --- 5. コピー/ダウンロード機能 ---
 
 function copyTextToClipboard(e) {
-    const item = e.currentTarget;
-    const targetId = item.dataset.copyTarget;
-    let textToCopy = '';
+const item = e.currentTarget;
+const targetId = item.dataset.copyTarget;
+let textToCopy = '';
 
-    switch(targetId) {
-      case 'blackRatio':
-        textToCopy = DOM.values.blackRatio.textContent.replace('%', '');
-        break;
-      case 'whiteRatio':
-        textToCopy = DOM.values.whiteRatio.textContent.replace('%', '');
-        break;
-      case 'lightColor':
-        textToCopy = DOM.values.lightColor.textContent;
-        break;
-      case 'darkColor':
-        textToCopy = DOM.values.darkColor.textContent;
-        break;
-      case 'contrastRatio':
-        textToCopy = DOM.values.contrastRatio.textContent.replace(':1', '');
-        break;
-    }
+switch(targetId) {
+case 'blackRatio':
+textToCopy = DOM.values.blackRatio.textContent.replace('%', '');
+break;
+case 'whiteRatio':
+textToCopy = DOM.values.whiteRatio.textContent.replace('%', '');
+break;
+case 'lightColor':
+textToCopy = DOM.values.lightColor.textContent;
+break;
+case 'darkColor':
+textToCopy = DOM.values.darkColor.textContent;
+break;
+case 'contrastRatio':
+textToCopy = DOM.values.contrastRatio.textContent.replace(':1', '');
+break;
+}
 
-    if (textToCopy) {
-      navigator.clipboard.writeText(textToCopy).then(() => {
-        showTooltip(e.clientX, e.clientY);
-      }).catch(err => {
-        console.error('コピーに失敗しました:', err);
-      });
-    }
+if (textToCopy) {
+// navigator.clipboard.writeText()を使用 (iframe内ではセキュリティエラーになる可能性があるが、Canvas環境では許可される場合がある)
+navigator.clipboard.writeText(textToCopy).then(() => {
+showTooltip(e.clientX, e.clientY);
+}).catch(err => {
+console.error('コピーに失敗しました:', err);
+// フォールバックが必要な場合はここに記述
+});
+}
 }
 
 let tooltipTimeout;
 function showTooltip(x, y) {
-  DOM.copyTooltip.style.left = `${x + 10}px`;
-  DOM.copyTooltip.style.top = `${y - 20}px`;
-  DOM.copyTooltip.classList.add('show');
+DOM.copyTooltip.style.left = `${x + 10}px`;
+DOM.copyTooltip.style.top = `${y - 20}px`;
+DOM.copyTooltip.classList.add('show');
 
-  clearTimeout(tooltipTimeout);
-  tooltipTimeout = setTimeout(() => {
-    DOM.copyTooltip.classList.remove('show');
-  }, 1500);
+clearTimeout(tooltipTimeout);
+tooltipTimeout = setTimeout(() => {
+DOM.copyTooltip.classList.remove('show');
+}, 1500);
 }
 
 function downloadCanvasImage(canvas, filename) {
-    const link = document.createElement('a');
-    link.download = filename || 'image.png';
-    canvas.toBlob((blob) => {
-        link.href = URL.createObjectURL(blob);
-        link.click();
-        URL.revokeObjectURL(link.href);
-    }, 'image/png');
+const link = document.createElement('a');
+link.download = filename || 'image.png';
+canvas.toBlob((blob) => {
+link.href = URL.createObjectURL(blob);
+link.click();
+URL.revokeObjectURL(link.href);
+}, 'image/png');
 }
 </script>
 </body>
