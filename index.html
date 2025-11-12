@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>白黒比＆ベクトルスコープ認識ツール (Pro)</title>
+<title>画像カラー分析</title>
 
 <script>
 // Typekit (フォント) の読み込み
@@ -17,7 +17,6 @@
   })(document);
 </script>
 <style>
-/* 🎨 EIZO風ミニマルUI */
 :root {
 /* --- 🎨 カラー設定 --- */
 --bg-color: #dbdbd7; 	 /* 全体の背景色 (淡いグレー) */
@@ -165,7 +164,7 @@ border: none;
 cursor: crosshair; /* スポイト機能のためにカーソルを変更 */
 }
 
-/* ★ 修正: ゼブラコントロール (スライダー) */
+/* ★ 修正: ゼブラコントロール (スライダー) のUI */
 #zebraControls {
     display: flex;
     align-items: center;
@@ -177,18 +176,86 @@ cursor: crosshair; /* スポイト機能のためにカーソルを変更 */
     border-top: 1px dashed var(--line-subtle);
     border-bottom: 1px dashed var(--line-subtle);
     gap: 10px;
+    color: var(--text-color-primary);
 }
 #zebraControls label {
     margin-right: 5px;
     white-space: nowrap;
+    color: var(--text-color-subtle);
 }
 #zebraControls input[type="range"] {
     flex-grow: 1;
     margin: 0 5px;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    background: var(--line-subtle);
+    outline: none;
+    opacity: 0.7;
+    transition: opacity .2s;
+    border-radius: 2px;
 }
+#zebraControls input[type="range"]:hover {
+    opacity: 1;
+}
+#zebraControls input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent-color);
+    cursor: pointer;
+}
+#zebraControls input[type="range"]::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent-color);
+    cursor: pointer;
+}
+
 #zebraControls input[type="number"] {
     width: 45px;
     font-family: var(--font-futura);
+    text-align: center;
+    border: 1px solid var(--line-subtle);
+    background-color: var(--main-card-bg);
+    color: var(--text-color-primary);
+    padding: 3px 0;
+    border-radius: 4px;
+}
+#zebraControls input[type="number"]:focus {
+    outline: none;
+    border-color: var(--accent-color);
+}
+
+#zebraControls input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    -webkit-appearance: none;
+    appearance: none;
+    border: 1px solid var(--line-subtle);
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+    background-color: var(--main-card-bg);
+    position: relative;
+    top: 2px;
+}
+#zebraControls input[type="checkbox"]:checked {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+}
+#zebraControls input[type="checkbox"]:checked::after {
+    content: '✔';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff;
+    font-size: 10px;
+    font-weight: bold;
 }
 
 
@@ -254,7 +321,7 @@ border: 1px solid var(--text-color-subtle);
 margin-left: 10px;
 }
 
-/* 波形モニター */
+/* ★ 修正: 波形モニターのUI */
 .waveform-container {
     padding: 10px 0;
     border-bottom: 1px solid var(--line-subtle);
@@ -264,16 +331,43 @@ margin-left: 10px;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px dashed var(--line-subtle);
 }
 .waveform-header .hist-label {
     margin: 0; 
     padding: 0; 
     font-size: 16px; 
     text-align: left;
+    color: var(--text-color-subtle);
 }
 .waveform-header div {
     font-size: 14px;
+    display: flex;
+    gap: 10px;
 }
+.waveform-header input[type="radio"] {
+    display: none; /* デフォルトのラジオボタンを隠す */
+}
+.waveform-header input[type="radio"] + label {
+    cursor: pointer;
+    padding: 4px 10px;
+    border: 1px solid var(--line-subtle);
+    border-radius: 4px;
+    color: var(--text-color-primary);
+    background-color: var(--main-card-bg);
+    transition: background-color 0.2s, border-color 0.2s;
+    font-family: var(--font-futura);
+}
+.waveform-header input[type="radio"]:hover + label {
+    border-color: var(--accent-color);
+}
+.waveform-header input[type="radio"]:checked + label {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+    color: #fff;
+}
+
 #waveformCanvas {
     width: 100%;
     height: 150px;
@@ -343,37 +437,46 @@ border-radius: var(--card-radius);
 }
 /* ------------------------------------- */
 
-/* 右下の二値化/グレースケール表示エリア */
+/* ★ 修正: 処理済み画像エリア (横スクロールとCSSリサイズ) */
 #processedImagesArea {
-margin-top: 40px;
-display: grid;
-grid-template-columns: 1fr 1fr;
-gap: 20px;
-background-color: var(--bg-color);
-padding: 0;
+    margin-top: 40px;
+    display: flex; /* Flexboxで横並びに */
+    gap: 20px;
+    background-color: var(--bg-color);
+    padding: 0;
+    overflow-x: auto; /* 横スクロールを可能に */
+    white-space: nowrap; /* 子要素が折り返さないように */
+    padding-bottom: 15px; /* スクロールバーのための余白 */
+    width: 100%; /* 親要素の幅に合わせる */
+    box-sizing: border-box;
 }
 
 .processed-image-card {
-background-color: var(--main-card-bg);
-padding: 20px;
-display: flex;
-flex-direction: column;
-align-items: center;
+    flex: 0 0 auto; /* 幅を固定し、伸縮させない */
+    width: 300px; /* カードの基準幅 */
+    background-color: var(--main-card-bg);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 
-border: 1px solid var(--border-color);
-border-radius: var(--card-radius);
+    border: 1px solid var(--border-color);
+    border-radius: var(--card-radius);
 }
 
-/* ★ 修正: height: auto; でアスペクト比を維持 */
 .processed-image-card canvas {
-width: 100%;
-height: auto; 
-max-height: 200px;
-display: block;
-border: none;
-margin-bottom: 10px;
-cursor: pointer;
-transition: border-color 0.2s ease;
+    width: 100%; /* 親カードの幅(300px)に合わせる */
+    height: 150px; /* 固定の表示高さを設定 */
+    display: block;
+    border: none;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+    
+    /* ★ 修正: 内部解像度を維持しつつ、見た目を縮小 */
+    object-fit: contain; /* アスペクト比を維持しつつ、指定した領域内に収まるように縮小 */
+    image-rendering: pixelated; /* シャープな縮小表示に */
+    background-color: #ddd; /* 縮小表示時の背景色 */
 }
 
 .processed-image-card canvas:hover {
@@ -384,6 +487,7 @@ border-color: var(--line-strong);
 font-size: 14px;
 color: var(--text-color-subtle);
 margin: 0;
+white-space: normal; /* カード名は折り返してOK */
 }
 
 
@@ -484,7 +588,7 @@ opacity: 1;
     #zebraControls {
         font-size: 12px;
         padding: 8px;
-        flex-wrap: wrap; /* スマホで折り返す */
+        flex-wrap: wrap; 
         gap: 5px;
     }
     #zebraControls input[type="number"] {
@@ -539,6 +643,10 @@ opacity: 1;
     
     .processed-image-card {
         padding: 15px;
+        width: 250px; /* スマホでのカード幅を調整 */
+    }
+    .processed-image-card canvas {
+        height: 120px; /* スマホでの表示高さを調整 */
     }
 }
 </style>
@@ -642,7 +750,15 @@ opacity: 1;
         </div>
         <div class="processed-image-card">
             <canvas id="grayscaleCanvas" data-filename="grayscale_image.png"></canvas>
-            <p>グレースケール画像</p>
+            <p>輝度グレースケール</p>
+        </div>
+        <div class="processed-image-card">
+            <canvas id="saturationGrayscaleCanvas" data-filename="saturation_grayscale_image.png"></canvas>
+            <p>彩度グレースケール</p>
+        </div>
+        <div class="processed-image-card">
+            <canvas id="luminosityGrayscaleCanvas" data-filename="luminosity_grayscale_image.png"></canvas>
+            <p>明度グレースケール</p>
         </div>
     </div>
 
@@ -685,6 +801,10 @@ imagePlaceholder: document.getElementById('imagePlaceholder'),
 histogramCanvas: document.getElementById('histogramCanvas'),
 binaryCanvas: document.getElementById('binaryCanvas'),
 grayscaleCanvas: document.getElementById('grayscaleCanvas'),
+// ★ 新しいグレースケールCanvasを追加
+saturationGrayscaleCanvas: document.getElementById('saturationGrayscaleCanvas'),
+luminosityGrayscaleCanvas: document.getElementById('luminosityGrayscaleCanvas'),
+
 vectorscopeCanvas: document.getElementById('vectorscopeCanvas'), 
 copyTooltip: document.getElementById('copyTooltip'),
 values: {
@@ -703,7 +823,7 @@ scopeValues: {
     cbMax: document.getElementById('cbMaxValue'),
     satMax: document.getElementById('satMaxValue')
 },
-// ★ 修正: ゼブラDOM
+// ゼブラDOM
 zebraControls: document.getElementById('zebraControls'),
 zebraToggle: document.getElementById('zebraToggle'),
 zebraThresholdSlider: document.getElementById('zebraThresholdSlider'),
@@ -757,11 +877,11 @@ item.addEventListener('click', copyTextToClipboard);
 });
 
 // ダウンロード機能
-[DOM.binaryCanvas, DOM.grayscaleCanvas].forEach(canvas => {
+[DOM.binaryCanvas, DOM.grayscaleCanvas, DOM.saturationGrayscaleCanvas, DOM.luminosityGrayscaleCanvas].forEach(canvas => {
 canvas.addEventListener('click', () => downloadCanvasImage(canvas, canvas.dataset.filename));
 });
 
-// ★ 修正: ゼブラ（スライダーと数値入力の連動）
+// ゼブラ（スライダーと数値入力の連動）
 DOM.zebraToggle.addEventListener('change', onZebraChange);
 DOM.zebraThresholdSlider.addEventListener('input', onZebraSliderChange);
 DOM.zebraThresholdNumber.addEventListener('input', onZebraNumberChange);
@@ -903,9 +1023,14 @@ DOM.scopeValues.satMax.textContent = maxSat.toFixed(4);
 
 // 描画
 animateHistogram(DOM.histogramCanvas, histogram, threshold);
+drawVectorscope(DOM.vectorscopeCanvas, data); 
+
+// ★ 修正: 全てのグレースケールを描画
 drawProcessedImage(DOM.binaryCanvas, img, threshold, 'binary');
 drawProcessedImage(DOM.grayscaleCanvas, img, threshold, 'grayscale');
-drawVectorscope(DOM.vectorscopeCanvas, data); // maxCr, maxCb, maxSat は不要
+drawProcessedImage(DOM.saturationGrayscaleCanvas, img, threshold, 'saturation');
+drawProcessedImage(DOM.luminosityGrayscaleCanvas, img, threshold, 'luminosity');
+
 
 // ★ 新機能: 波形モニターを初回描画
 drawWaveform();
@@ -913,14 +1038,14 @@ drawWaveform();
 onZebraChange();
 }
 
-// ★ 修正: 処理済み画像の描画 (フル解像度で処理)
+// ★ 修正: 処理済み画像の描画 (フル解像度 + 新モード)
 function drawProcessedImage(canvas, originalImg, threshold, mode) {
-    // ★ 修正: 元画像の解像度でCanvasを設定
+    // 元画像の解像度でCanvasを設定
     canvas.width = originalImg.width;
     canvas.height = originalImg.height;
 
     const ctx = canvas.getContext('2d');
-    ctx.imageSmoothingEnabled = false; // ピクセル処理のため無効化
+    ctx.imageSmoothingEnabled = false; 
     ctx.drawImage(originalImg, 0, 0, originalImg.width, originalImg.height); 
 
     const imageData = ctx.getImageData(0, 0, originalImg.width, originalImg.height);
@@ -928,17 +1053,37 @@ function drawProcessedImage(canvas, originalImg, threshold, mode) {
 
     for (let i = 0; i < data.length; i += 4) {
         const r = data[i], g = data[i+1], b = data[i+2];
-        const lum = Math.round(0.299*r + 0.587*g + 0.114*b);
         let color;
 
-        if (mode === 'binary') {
-            color = lum < threshold ? 0 : 255;
-        } else { // grayscale
-            color = lum;
+        if (mode === 'binary' || mode === 'grayscale') {
+            const lum = Math.round(0.299*r + 0.587*g + 0.114*b); // 輝度 (Luma)
+            if (mode === 'binary') {
+                color = lum < threshold ? 0 : 255;
+            } else {
+                color = lum;
+            }
+        } else {
+            // HSL Calculation for Saturation and Luminosity (Lightness)
+            const rN = r / 255, gN = g / 255, bN = b / 255;
+            const max = Math.max(rN, gN, bN), min = Math.min(rN, gN, bN);
+            let s, l = (max + min) / 2;
+
+            if (max === min) {
+                s = 0; // achromatic
+            } else {
+                const d = max - min;
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+            }
+
+            if (mode === 'saturation') {
+                color = Math.round(s * 255);
+            } else if (mode === 'luminosity') {
+                color = Math.round(l * 255); // 明度 (Lightness)
+            }
         }
         data[i] = data[i+1] = data[i+2] = color;
     }
-    // ★ 修正: フル解像度のデータをCanvasに戻す
+    // フル解像度のデータをCanvasに戻す
     ctx.putImageData(imageData, 0, 0);
 }
 
@@ -970,7 +1115,7 @@ threshold = i;
 return threshold;
 }
 
-// ★ 修正: ヒストグラムアニメーション (99パーセンタイルで自動スケール)
+// ヒストグラムアニメーション (99パーセンタイルで自動スケール)
 function animateHistogram(canvas, histogram, threshold) {
     const ctx = canvas.getContext('2d');
     
@@ -983,16 +1128,14 @@ function animateHistogram(canvas, histogram, threshold) {
     const scaleHeight = 15; 
     const graphHeight = cssHeight - scaleHeight; 
 
-    // ★ 修正: スパイク（外れ値）を除外するため99パーセンタイルを最大値として採用
     const sortedHist = [...histogram].filter(val => val > 0).sort((a, b) => a - b);
     let max;
     if (sortedHist.length > 0) {
         const percentileIndex = Math.floor(sortedHist.length * 0.99);
         max = sortedHist[percentileIndex];
     } else {
-        max = 1; // ゼロ除算を避ける
+        max = 1; 
     }
-    // Fallback: もし99パーセンタイルが0（または非常に小さい）なら、全体の最大値を使う
     if (max < 10) { 
         max = Math.max(...histogram, 1);
     }
@@ -1006,7 +1149,6 @@ function animateHistogram(canvas, histogram, threshold) {
 
         ctx.clearRect(0, 0, w, cssHeight); 
 
-        // 1. グラフ描画
         ctx.beginPath();
         ctx.moveTo(0, graphHeight); 
 
@@ -1015,7 +1157,7 @@ function animateHistogram(canvas, histogram, threshold) {
         for (let i = 0; i < currentDrawRange; i++) {
             const histIndex = Math.floor(i / w * 256); 
             const histValue = histogram[histIndex] || 0; 
-            const barHeight = (histValue / max) * graphHeight; // ★ 99パーセンタイルのmaxでスケール
+            const barHeight = (histValue / max) * graphHeight; 
             const x = i;
             const y = graphHeight - barHeight; 
 
@@ -1037,14 +1179,12 @@ function animateHistogram(canvas, histogram, threshold) {
         ctx.lineWidth = 1;
         ctx.stroke();
 
-        // 2. 輝度スケール
         const grad = ctx.createLinearGradient(0, 0, w, 0); 
         grad.addColorStop(0, "#000000");
         grad.addColorStop(1, "#FFFFFF");
         ctx.fillStyle = grad;
         ctx.fillRect(0, graphHeight, w, scaleHeight); 
 
-        // 3. 閾値の線
         if (animationProgress === 1) {
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'; 
             ctx.lineWidth = 2;
@@ -1064,7 +1204,7 @@ function animateHistogram(canvas, histogram, threshold) {
     requestAnimationFrame(drawFrame);
 }
 
-// ベクトルスコープ (変更なし)
+// ベクトルスコープ
 function drawVectorscope(canvas, pixelData) {
     const ctx = canvas.getContext('2d');
     const size = 250; 
@@ -1348,7 +1488,7 @@ function onWaveModeChange() {
     drawWaveform();
 }
 
-// ★ 修正: 波形モニターを描画 (歪み修正)
+// ★ 修正: 波形モニターを描画 (輝度修正 + 歪み修正)
 function drawWaveform() {
     if (!currentImage) return;
 
@@ -1356,22 +1496,19 @@ function drawWaveform() {
     const ctx = canvas.getContext('2d');
     const mode = DOM.waveModeLuma.checked ? 'Luma' : 'RGB';
     
-    // ★ 修正: CSSの表示幅を解像度にする
     const w = canvas.offsetWidth;
-    const h = 150; // Y軸（輝度/RGB値に対応）
+    const h = 150; 
     canvas.width = w;
     canvas.height = h;
 
     // 画像を波形解像度に縮小してピクセルデータを取得
     const tempWaveCanvas = document.createElement('canvas');
-    // ★ 修正: 幅は w, 高さは元の画像の比率を維持
     const tempWaveHeight = (currentImage.height / currentImage.width) * w;
     tempWaveCanvas.width = w;
     tempWaveCanvas.height = tempWaveHeight; 
 
     const tempWaveCtx = tempWaveCanvas.getContext('2d');
     
-    // ★ 修正: 歪まないように描画
     tempWaveCtx.drawImage(currentImage, 0, 0, w, tempWaveHeight);
     const imageData = tempWaveCtx.getImageData(0, 0, w, tempWaveHeight);
     const data = imageData.data;
@@ -1380,7 +1517,6 @@ function drawWaveform() {
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, w, h);
 
-    // ★ 修正: 配列のサイズを w * 256 に
     const lumaBins = new Uint8Array(w * 256); // 輝度
     const rBins = new Uint8Array(w * 256); // R
     const gBins = new Uint8Array(w * 256); // G
@@ -1404,25 +1540,26 @@ function drawWaveform() {
     const accentColor = 'var(--accent-color)';
     
     if (mode === 'Luma') {
-        // 輝度モード
-        const maxCount = Math.max(...lumaBins, 1);
-        drawWaveChannel(ctx, lumaBins, w, h, accentColor, maxCount);
+        // ★ 修正: 輝度モードの感度調整
+        // 縮小画像の高さの 1/10 程度を最大輝度としてスケーリング
+        const scalingMax = Math.max(1, Math.floor(tempWaveHeight / 10));
+        drawWaveChannel(ctx, lumaBins, w, h, accentColor, scalingMax);
     } else { 
         // RGBパレードモード
         ctx.globalCompositeOperation = 'lighter'; // 色を重ねる
         
-        // R, G, B をそれぞれ描画
-        drawWaveChannel(ctx, rBins, w, h, 'rgba(255, 0, 0, 0.7)', 10);
-        drawWaveChannel(ctx, gBins, w, h, 'rgba(0, 255, 0, 0.7)', 10);
-        drawWaveChannel(ctx, bBins, w, h, 'rgba(0, 0, 255, 0.7)', 10);
+        // ★ 修正: RGBの感度調整
+        const scalingMaxRGB = Math.max(1, Math.floor(tempWaveHeight / 20));
+        drawWaveChannel(ctx, rBins, w, h, 'rgba(255, 0, 0, 0.7)', scalingMaxRGB);
+        drawWaveChannel(ctx, gBins, w, h, 'rgba(0, 255, 0, 0.7)', scalingMaxRGB);
+        drawWaveChannel(ctx, bBins, w, h, 'rgba(0, 0, 255, 0.7)', scalingMaxRGB);
 
         ctx.globalCompositeOperation = 'source-over'; // 元に戻す
     }
 }
 
-// 波形描画のサブ関数
-function drawWaveChannel(ctx, bins, w, h, color, maxCount) {
-    maxCount = Math.min(maxCount, 10); // カウント数の上限
+// ★ 修正: 波形描画のサブ関数 (スケーリングロジック)
+function drawWaveChannel(ctx, bins, w, h, color, scalingMax) {
     
     const hScale = h / 256; // 輝度(0-255)をキャンバスの高さ(h)にマッピング
 
@@ -1430,13 +1567,14 @@ function drawWaveChannel(ctx, bins, w, h, color, maxCount) {
         for (let l = 0; l < 256; l++) { // l = 輝度/RGB値
             const count = bins[x * 256 + l];
             if (count > 0) {
-                // ピクセル数に応じて不透明度を変える
-                const opacity = Math.min(1, (count / maxCount) * 0.7 + 0.3);
+                // ★ 修正: ピクセル数に応じて不透明度を変える
+                const opacity = Math.min(1, (count / scalingMax) * 0.7 + 0.3);
                 
                 if (color.includes('rgba')) { // RGBモード
                     ctx.globalAlpha = opacity;
                     ctx.fillStyle = color;
                 } else { // 輝度モード
+                    // accent-color のRGB (b95282) を使ってrgbaを生成
                     ctx.fillStyle = `rgba(185, 82, 130, ${opacity})`;
                 }
                 
