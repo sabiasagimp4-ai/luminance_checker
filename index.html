@@ -4,18 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>画像カラー分析</title>
-
-<script>
-// Typekit (フォント) の読み込み
-  (function(d) {
-    var config = {
-      kitId: 'ydf1tls',
-      scriptTimeout: 3000,
-      async: true
-    },
-    h=d.documentElement,t=setTimeout(function(){h.className=h.className.replace(/\bwf-loading\b/g,"")+" wf-inactive";},config.scriptTimeout),tk=d.createElement("script"),f=false,s=d.getElementsByTagName("script")[0],a;h.className+=" wf-loading";tk.src='https://use.typekit.net/'+config.kitId+'.js';tk.async=true;tk.onload=tk.onreadystatechange=function(){a=this.readyState;if(f||a&&a!="complete"&&a!="loaded")return;f=true;clearTimeout(t);try{Typekit.load(config)}catch(e){}};s.parentNode.insertBefore(tk,s)
-  })(document);
-</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&family=Zen+Maru+Gothic&display=swap" rel="stylesheet">
 <style>
 :root {
 /* --- 🎨 カラー設定 --- */
@@ -35,9 +26,9 @@
 --threshold-color: #FFFFFF; 	/* 閾値の色 */
 
 /* --- 🖋️ フォント設定 --- */
---font-heading: 'futura-100-book', "dnp-shuei-gothic-gin-std", sans-serif;
---font-body: 'dnp-shuei-gothic-gin-std', 'futura-100-book', sans-serif;
---font-futura: 'futura-100-book', sans-serif; /* ベクトルスコープの計測値用 */
+--font-heading: 'Montserrat', "Zen Maru Gothic", sans-serif;
+--font-body: 'Zen Maru Gothic', 'Montserrat', sans-serif;
+--font-futura: 'Montserrat', sans-serif; /* ベクトルスコープの計測値用 */
 }
 
 body {
