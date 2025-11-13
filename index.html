@@ -382,8 +382,8 @@ border-radius: var(--card-radius);
 
 /* 正円を維持するためのラッパー */
 #vectorscopeWrapper {
-    width: 250px; 
-    height: 250px;
+    width: 200px; /* 修正: 小さくしてカード枠に収まるように */
+    height: 200px; /* 修正: 正円を維持 */
     margin: 0 auto 10px auto;
 }
 
@@ -666,8 +666,8 @@ opacity: 1;
     }
 
     #vectorscopeWrapper {
-        width: 200px; 
-        height: 200px;
+        width: 180px; /* 修正: スマホでも小さく */
+        height: 180px; /* 修正: 正円を維持 */
     }
     
     .scope-data-display {
@@ -908,7 +908,7 @@ waveformCanvas: document.getElementById('waveformCanvas'),
 waveModeLuma: document.getElementById('waveModeLuma'),
 waveModeRGB: document.getElementById('waveModeRGB'),
 
-// ★ スライド機能用のDOM要素を追加
+// ★ スライド機能用のDOM要素
 processedImagesWrapper: document.getElementById('processedImagesWrapper'),
 prevProcessedImageButton: document.getElementById('prevProcessedImage'),
 nextProcessedImageButton: document.getElementById('nextProcessedImage'),
@@ -986,7 +986,7 @@ DOM.resultImagePreview.addEventListener('mouseleave', handlePreviewMouseLeave);
 DOM.waveModeLuma.addEventListener('change', onWaveModeChange);
 DOM.waveModeRGB.addEventListener('change', onWaveModeChange);
 
-// ★ スライドボタンのイベントリスナーを追加
+// ★ スライドボタンのイベントリスナー
 DOM.prevProcessedImageButton.addEventListener('click', () => navigateProcessedImages(-1));
 DOM.nextProcessedImageButton.addEventListener('click', () => navigateProcessedImages(1));
 
@@ -1012,32 +1012,51 @@ img.onload = () => {
     DOM.analysisContainer.style.display = 'grid';
     setTimeout(() => { DOM.analysisContainer.style.opacity = '1'; }, 50);
 
-    // プレビューCanvasに画像を描画
+    // プレビューCanvasに画像を描画 (高DPI対応)
     drawPreviewCanvas();
     
     // 解析を実行 (ピクセルデータをグローバルに保存)
     analyzeAndDisplayResults(img);
 
-    // ★ 新規追加: processedImageCards を初期化し、最初の画像を表示
+    // ★ スライダー機能の初期化
     processedImageCards = Array.from(DOM.processedImagesWrapper.children);
-    currentProcessedImageIndex = 0; // 常に最初の画像から始める
-    updateProcessedImageDisplay(); // 初期表示
+    currentProcessedImageIndex = 0; 
+    updateProcessedImageDisplay(); 
 };
 img.src = e.target.result;
 };
 reader.readAsDataURL(file);
 }
 
-// プレビューCanvasに描画する関数
+// プレビューCanvasに描画する関数 (★修正: 高DPI対応)
 function drawPreviewCanvas() {
     if (!currentImage || !previewCtx) return;
     const canvas = DOM.resultImagePreview;
     
-    const aspectRatio = currentImage.height / currentImage.width;
-    canvas.width = canvas.offsetWidth;
-    canvas.height = canvas.offsetWidth * aspectRatio;
+    // デバイスピクセル比を取得
+    const dpr = window.devicePixelRatio || 1; 
     
-    previewCtx.drawImage(currentImage, 0, 0, canvas.width, canvas.height);
+    // CSSのサイズを取得
+    const cssWidth = canvas.offsetWidth;
+    const cssHeight = (currentImage.height / currentImage.width) * cssWidth;
+    
+    // Canvasの描画バッファサイズを設定 (DPIを考慮)
+    canvas.width = cssWidth * dpr;
+    canvas.height = cssHeight * dpr;
+    
+    // Canvasの表示サイズ (CSSサイズ) を設定
+    canvas.style.width = `${cssWidth}px`;
+    canvas.style.height = `${cssHeight}px`;
+    
+    // 描画コンテキストをスケーリング
+    previewCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    // 画像を描画
+    previewCtx.imageSmoothingEnabled = true; // スムージング有効化
+    previewCtx.drawImage(currentImage, 0, 0, cssWidth, cssHeight);
+
+    // 描画コンテキストをリセット (ゼブラなどの描画に影響しないように)
+    previewCtx.setTransform(1, 0, 0, 1, 0, 0); 
 }
 
 function analyzeAndDisplayResults(img) {
@@ -1108,26 +1127,26 @@ DOM.scopeValues.cbMax.textContent = maxCb.toFixed(4);
 DOM.scopeValues.satMax.textContent = maxSat.toFixed(4);
 
 // 描画
-animateHistogram(DOM.histogramCanvas, histogram, threshold);
-drawVectorscope(DOM.vectorscopeCanvas, data); 
+animateHistogram(DOM.histogramCanvas, histogram, threshold); // ★修正: 高DPI対応
+drawVectorscope(DOM.vectorscopeCanvas, data); // ★修正: 小型化と情報追加
 
-// ★ 修正: 全てのグレースケールを描画
+// ★ 全てのグレースケールを描画
 drawProcessedImage(DOM.binaryCanvas, img, threshold, 'binary');
 drawProcessedImage(DOM.grayscaleCanvas, img, threshold, 'grayscale');
 drawProcessedImage(DOM.saturationGrayscaleCanvas, img, threshold, 'saturation');
 drawProcessedImage(DOM.luminosityGrayscaleCanvas, img, threshold, 'luminosity');
 
 
-// ★ 修正箇所: 波形モニターの初回描画をわずかに遅延させる
+// 波形モニターの初回描画をわずかに遅延させる
 setTimeout(() => {
     drawWaveform();
 }, 100); 
 
-// ★ 新機能: ゼブラがもしONなら初回描画
+// ゼブラがもしONなら初回描画
 onZebraChange();
 }
 
-// ★ 修正: 処理済み画像の描画 (フル解像度 + 新モード)
+// ★ 処理済み画像の描画 (フル解像度 + 新モード)
 function drawProcessedImage(canvas, originalImg, threshold, mode) {
     // 元画像の解像度でCanvasを設定
     canvas.width = originalImg.width;
@@ -1204,18 +1223,22 @@ threshold = i;
 return threshold;
 }
 
-// ヒストグラムアニメーション (99パーセンタイルで自動スケール)
+// ヒストグラムアニメーション (★修正: 高DPI対応)
 function animateHistogram(canvas, histogram, threshold) {
     const ctx = canvas.getContext('2d');
     
+    // 高DPI対応
+    const dpr = window.devicePixelRatio || 1;
+    
     const cssWidth = canvas.offsetWidth;
     const cssHeight = canvas.offsetHeight; 
-    canvas.width = cssWidth; 
-    canvas.height = cssHeight; 
     
-    const w = canvas.width;
-    const scaleHeight = 15; 
-    const graphHeight = cssHeight - scaleHeight; 
+    canvas.width = cssWidth * dpr; // 描画バッファを高DPIに設定
+    canvas.height = cssHeight * dpr; 
+    
+    const w = canvas.width; // 内部描画幅
+    const scaleHeight = 15 * dpr; // スケールもDPI対応
+    const graphHeight = canvas.height - scaleHeight; 
 
     const sortedHist = [...histogram].filter(val => val > 0).sort((a, b) => a - b);
     let max;
@@ -1236,31 +1259,34 @@ function animateHistogram(canvas, histogram, threshold) {
         const elapsedTime = currentTime - startTime;
         const animationProgress = Math.min(1, elapsedTime / animationDuration);
 
-        ctx.clearRect(0, 0, w, cssHeight); 
+        ctx.clearRect(0, 0, w, canvas.height); 
+
+        // 描画コンテキストをスケーリング
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
         ctx.beginPath();
-        ctx.moveTo(0, graphHeight); 
+        ctx.moveTo(0, graphHeight / dpr); 
 
         const currentDrawRange = w * animationProgress;
 
         for (let i = 0; i < currentDrawRange; i++) {
-            const histIndex = Math.floor(i / w * 256); 
+            const histIndex = Math.floor(i / (w / dpr) * 256); 
             const histValue = histogram[histIndex] || 0; 
-            const barHeight = (histValue / max) * graphHeight; 
-            const x = i;
-            const y = graphHeight - barHeight; 
+            const barHeight = (histValue / max) * (graphHeight / dpr); 
+            const x = i / dpr; 
+            const y = (graphHeight / dpr) - barHeight; 
 
             if (i > 0) {
-                const prevX = i - 1;
-                const prevHistIndex = Math.floor(prevX / w * 256);
-                const prevY = graphHeight - (histogram[prevHistIndex] / max) * graphHeight;
+                const prevX = (i - 1) / dpr;
+                const prevHistIndex = Math.floor(prevX / (w / dpr) * 256);
+                const prevY = (graphHeight / dpr) - (histogram[prevHistIndex] / max) * (graphHeight / dpr);
                 ctx.bezierCurveTo(prevX + (x - prevX) * 0.5, prevY, x - (x - prevX) * 0.5, y, x, y);
             } else {
                 ctx.lineTo(x, y);
             }
         }
         
-        ctx.lineTo(currentDrawRange, graphHeight); 
+        ctx.lineTo(currentDrawRange / dpr, graphHeight / dpr); 
         
         ctx.fillStyle = 'var(--accent-color)';
         ctx.fill();
@@ -1268,23 +1294,26 @@ function animateHistogram(canvas, histogram, threshold) {
         ctx.lineWidth = 1;
         ctx.stroke();
 
-        const grad = ctx.createLinearGradient(0, 0, w, 0); 
+        const grad = ctx.createLinearGradient(0, 0, w / dpr, 0); 
         grad.addColorStop(0, "#000000");
         grad.addColorStop(1, "#FFFFFF");
         ctx.fillStyle = grad;
-        ctx.fillRect(0, graphHeight, w, scaleHeight); 
+        ctx.fillRect(0, graphHeight / dpr, w / dpr, scaleHeight / dpr); 
 
         if (animationProgress === 1) {
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'; 
             ctx.lineWidth = 2;
             ctx.beginPath();
             
-            const thresholdX = threshold / 256 * w; 
+            const thresholdX = threshold / 256 * (w / dpr); 
             ctx.moveTo(thresholdX, 0);
-            ctx.lineTo(thresholdX, graphHeight + scaleHeight);
+            ctx.lineTo(thresholdX, (graphHeight + scaleHeight) / dpr);
             ctx.stroke();
         }
         
+        // 描画コンテキストをリセット
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+
         if (animationProgress < 1) {
             requestAnimationFrame(drawFrame);
         }
@@ -1293,32 +1322,39 @@ function animateHistogram(canvas, histogram, threshold) {
     requestAnimationFrame(drawFrame);
 }
 
-// ベクトルスコープ
+
+// ベクトルスコープ (★修正: 小型化と情報追加)
 function drawVectorscope(canvas, pixelData) {
     const ctx = canvas.getContext('2d');
-    const size = 250; 
+    const size = 200; // CSSと合わせる
     canvas.width = size;
     canvas.height = size;
     const center = size / 2;
-    const radius = size / 2 - 15;
+    const radius = size / 2 - 15; // マーカーやテキストの余白
     const numPixels = pixelData.length / 4;
     const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--scope-grid-color').trim();
+
+    // 背景をクリア
     ctx.fillStyle = 'var(--scope-bg-color)'; 
     ctx.fillRect(0, 0, size, size);
+
+    // グリッド線
     ctx.strokeStyle = gridColor;
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(center, 0); ctx.lineTo(center, size);
-    ctx.moveTo(0, center); ctx.lineTo(size, center);
+    ctx.moveTo(center, 0); ctx.lineTo(center, size); // 垂直線 (Cb軸)
+    ctx.moveTo(0, center); ctx.lineTo(size, center); // 水平線 (Cr軸)
     ctx.stroke();
-    ctx.strokeStyle = gridColor;
-    ctx.lineWidth = 1;
+
+    // 同心円
     ctx.beginPath();
     ctx.arc(center, center, radius * 0.66, 0, 2 * Math.PI); 
     ctx.stroke();
     ctx.beginPath();
     ctx.arc(center, center, radius, 0, 2 * Math.PI);
     ctx.stroke();
+
+    // 角度目盛り
     for (let i = 0; i < 360; i += 30) {
         const rad = i * (Math.PI / 180);
         const startR = radius * 1.05;
@@ -1333,72 +1369,125 @@ function drawVectorscope(canvas, pixelData) {
         ctx.lineTo(x2, y2);
         ctx.stroke();
     }
+
+    // ★ 主要な色相のマーカーとテキスト (R, MG, B, CY, G, YL)
     const primaryColors = [
-        { label: 'Y', angle: 0, color: '#FFFF00' },
-        { label: 'M', angle: 30, color: '#FF00FF' },  
-        { label: 'B', angle: 90, color: '#0000FF' },  
-        { label: 'C', angle: 150, color: '#00FFFF' }, 
-        { label: 'G', angle: 210, color: '#00FF00' }, 
-        { label: 'R', angle: 330, color: '#FF0000' }  
+        { label: 'R', angle: 330, color: '#FF0000', textOffset: 15 }, 
+        { label: 'MG', angle: 30, color: '#FF00FF', textOffset: 15 }, 
+        { label: 'B', angle: 90, color: '#0000FF', textOffset: 15 },  
+        { label: 'CY', angle: 150, color: '#00FFFF', textOffset: 15 }, 
+        { label: 'G', angle: 210, color: '#00FF00', textOffset: 15 }, 
+        { label: 'YL', angle: 270, color: '#FFFF00', textOffset: 15 } 
     ];
+    
+    // ★ 追加の角度情報 (3枚目の画像を参考に)
+    const additionalAngles = [
+        { angle: 60.8, text: '60.8°', align: 'left' },
+        { angle: 103.4, text: '103.4°', align: 'left' },
+        { angle: 123, text: '123°', align: 'left' },
+        { angle: 167.1, text: '167.1°', align: 'left' },
+        { angle: 213, text: '213°', align: 'left' },
+        { angle: 240.8, text: '240.8°', align: 'right' },
+        { angle: 283.4, text: '283.4°', align: 'right' },
+        { angle: 303, text: '303°', align: 'right' },
+        { angle: 33, text: '33°', align: 'right' },
+        { angle: 347.1, text: '347.1°', align: 'right' }
+    ];
+
     primaryColors.forEach(pc => {
         const rad = pc.angle * (Math.PI / 180);
         const markerRadius = radius * 0.8; 
         const x_marker = center + markerRadius * Math.sin(rad);
         const y_marker = center - markerRadius * Math.cos(rad);
-        const labelRadius = radius * 1.3;
-        const x_label = center + labelRadius * Math.sin(rad);
-        const y_label = center - labelRadius * Math.cos(rad);
+        
         ctx.strokeStyle = gridColor;
         ctx.lineWidth = 1;
-        const boxSize = 15;
-        ctx.beginPath();
-        ctx.moveTo(x_marker - boxSize/2, y_marker - boxSize/2 + 5);
-        ctx.lineTo(x_marker - boxSize/2, y_marker - boxSize/2);
-        ctx.lineTo(x_marker - boxSize/2 + 5, y_marker - boxSize/2);
-        ctx.moveTo(x_marker + boxSize/2 - 5, y_marker - boxSize/2);
-        ctx.lineTo(x_marker + boxSize/2, y_marker - boxSize/2);
-        ctx.lineTo(x_marker + boxSize/2, y_marker - boxSize/2 + 5);
-        ctx.moveTo(x_marker + boxSize/2, y_marker + boxSize/2 - 5);
-        ctx.lineTo(x_marker + boxSize/2, y_marker + boxSize/2);
-        ctx.lineTo(x_marker + boxSize/2 - 5, y_marker + boxSize/2);
-        ctx.moveTo(x_marker - boxSize/2 + 5, y_marker + boxSize/2);
-        ctx.lineTo(x_marker - boxSize/2, y_marker + boxSize/2);
-        ctx.lineTo(x_marker - boxSize/2, y_marker + boxSize/2 - 5);
-        ctx.stroke();
+
+        // 四角いマーカーの描画
+        const boxSize = 10; 
+        ctx.strokeRect(x_marker - boxSize/2, y_marker - boxSize/2, boxSize, boxSize);
+
+        // テキストラベルの描画 (色相名)
         ctx.fillStyle = gridColor;
-        ctx.font = '12px var(--font-futura)';
+        ctx.font = '10px var(--font-futura)'; 
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(pc.label, x_label, y_label);
+        
+        const labelRad = (pc.angle - 90) * (Math.PI / 180); 
+        const labelDist = radius + pc.textOffset; 
+        const x_label = center + labelDist * Math.cos(labelRad);
+        const y_label = center + labelDist * Math.sin(labelRad);
+
+        // テキストの位置調整
+        ctx.save();
+        ctx.translate(x_label, y_label);
+        ctx.rotate(labelRad + Math.PI / 2); 
+        ctx.fillText(pc.label, 0, 0); 
+        ctx.restore();
     });
-    const maxChrominance = 0.5;
+
+    // ★ 追加の角度テキスト描画
+    additionalAngles.forEach(item => {
+        const rad = (item.angle - 90) * (Math.PI / 180); 
+        const labelDist = radius + 25; 
+        const x_label = center + labelDist * Math.cos(rad);
+        const y_label = center + labelDist * Math.sin(rad);
+
+        ctx.fillStyle = gridColor;
+        ctx.font = '10px var(--font-futura)';
+        ctx.textAlign = item.align === 'left' ? 'left' : 'right'; 
+        ctx.textBaseline = 'middle';
+
+        ctx.save();
+        ctx.translate(x_label, y_label);
+        ctx.rotate(rad + Math.PI / 2);
+        ctx.fillText(item.text, 0, 0); 
+        ctx.restore();
+    });
+
+    // ★ 軸ラベル (Cr, Cb) の追加
+    ctx.fillStyle = gridColor;
+    ctx.font = '10px var(--font-futura)';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('B-Y (Cb)', center, size - 10); 
+    ctx.fillText('R-Y (Cr)', size - 10, center); 
+
+    // ピクセルデータのプロット
+    ctx.globalCompositeOperation = 'screen'; 
+    const maxChrominance = 0.5; 
     const plotRadius = radius; 
-    ctx.globalCompositeOperation = 'lighter';
-    const skip = Math.max(1, Math.floor(numPixels / 100000)); 
+    const skip = Math.max(1, Math.floor(numPixels / 50000)); 
+    
     for (let i = 0; i < pixelData.length; i += 4 * skip) {
         const r = pixelData[i] / 255;
         const g = pixelData[i+1] / 255;
         const b = pixelData[i+2] / 255;
+        
         const yNorm = 0.299 * r + 0.587 * g + 0.114 * b;
-        const cbNorm = b - yNorm; // Cb (Blue-Y) -> X軸
-        const crNorm = r - yNorm; // Cr (Red-Y) -> Y軸
+        const cbNorm = b - yNorm; 
+        const crNorm = r - yNorm; 
+        
         const plotCb = cbNorm * (plotRadius / maxChrominance);
         const plotCr = crNorm * (plotRadius / maxChrominance);
+        
         const plotX = center + plotCb; 
-        const plotY = center + plotCr;
+        const plotY = center - plotCr; 
+
         const dx = plotX - center;
         const dy = plotY - center;
-        if (dx * dx + dy * dy <= plotRadius * plotRadius) {
-            const hue = Math.atan2(plotCr, plotCb) * (180 / Math.PI) + 180;
-            const sat = Math.sqrt(dx*dx + dy*dy) / plotRadius;
-            ctx.fillStyle = `hsl(${hue}, 100%, ${50 + sat * 40}%)`; 
+        if (dx * dx + dy * dy <= plotRadius * plotRadius * 1.1) { 
+            const hue = (Math.atan2(-crNorm, cbNorm) * (180 / Math.PI) + 360) % 360; 
+            const sat = Math.sqrt(crNorm * crNorm + cbNorm * cbNorm) / maxChrominance; 
+            
+            const lum = yNorm * 100; 
+            const lightness = Math.max(10, Math.min(90, lum)); 
+            
+            ctx.fillStyle = `hsl(${hue}, ${sat * 100}%, ${lightness}%)`; 
             ctx.fillRect(plotX, plotY, 1.5, 1.5); 
         }
     }
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(center - 1, center - 1, 3, 3);
+    ctx.globalCompositeOperation = 'source-over'; 
 }
 
 
@@ -1465,23 +1554,25 @@ URL.revokeObjectURL(link.href);
 
 // --- 6. ★★★ 新機能の実装 ★★★ ---
 
-// ★ スポイト: プレビュー上をマウス移動
+// スポイト: プレビュー上をマウス移動
 function handlePreviewMouseMove(e) {
     if (!currentImageData || !currentImage) return;
 
     const canvas = DOM.resultImagePreview;
     const rect = canvas.getBoundingClientRect();
     
+    // 高DPIを考慮したスケールを取得
+    const dpr = window.devicePixelRatio || 1;
+    const scaleX = currentImageData.width / (canvas.width / dpr);
+    const scaleY = currentImageData.height / (canvas.height / dpr);
+    
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    const scaleX = currentImage.width / canvas.width;
-    const scaleY = currentImage.height / canvas.height;
-    
     const imgX = Math.floor(x * scaleX);
     const imgY = Math.floor(y * scaleY);
 
-    if (imgX < 0 || imgX >= currentImage.width || imgY < 0 || imgY >= currentImage.height) {
+    if (imgX < 0 || imgX >= currentImageData.width || imgY < 0 || imgY >= currentImageData.height) {
         handlePreviewMouseLeave();
         return;
     }
@@ -1504,12 +1595,12 @@ function handlePreviewMouseMove(e) {
     DOM.eyedropperInfo.style.display = 'block';
 }
 
-// ★ スポイト: マウスがプレビューから外れた
+// スポイト: マウスがプレビューから外れた
 function handlePreviewMouseLeave() {
     DOM.eyedropperInfo.style.display = 'none';
 }
 
-// ★ ゼブラ: トグルまたは閾値が変更された
+// ゼブラ: トグルまたは閾値が変更された
 function onZebraChange() {
     if (!currentImage) return;
     
@@ -1522,7 +1613,7 @@ function onZebraChange() {
     }
 }
 
-// ★ ゼブラ: パターンを描画
+// ゼブラ: パターンを描画
 function drawZebraPattern(thresholdValue) {
     if (!currentImageData || !previewCtx) return;
 
@@ -1535,6 +1626,7 @@ function drawZebraPattern(thresholdValue) {
     
     const thresholdLuma = (thresholdValue / 100) * 255;
     
+    // 描画コンテキストがスケールされているため、getImageDataはリセット後のサイズで取得
     const canvasImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const canvasData = canvasImageData.data;
     const canvasWidth = canvas.width;
@@ -1558,15 +1650,16 @@ function drawZebraPattern(thresholdValue) {
             }
         }
     }
+    // 描画コンテキストをリセット後のputImageDataで描画
     ctx.putImageData(canvasImageData, 0, 0);
 }
 
-// ★ 波形: モードが変更された
+// 波形: モードが変更された
 function onWaveModeChange() {
     drawWaveform();
 }
 
-// ★ 修正: 波形モニターを描画 (輝度修正 + 歪み修正)
+// 波形モニターを描画
 function drawWaveform() {
     if (!currentImage) return;
 
@@ -1629,7 +1722,7 @@ function drawWaveform() {
     }
 }
 
-// ★ 修正: 波形描画のサブ関数 (スケーリングロジック)
+// 波形描画のサブ関数
 function drawWaveChannel(ctx, bins, w, h, color, scalingMax) {
     
     const hScale = h / 256; 
@@ -1654,17 +1747,15 @@ function drawWaveChannel(ctx, bins, w, h, color, scalingMax) {
     ctx.globalAlpha = 1.0; 
 }
 
-// ★★★ ここからスライダー機能の関数 ★★★
+// スライダー機能の関数
 
 // 処理済み画像の表示を更新する関数
 function updateProcessedImageDisplay() {
     if (processedImageCards.length === 0) {
-        // まだカードが読み込まれていない場合は、DOMから再取得
         processedImageCards = Array.from(DOM.processedImagesWrapper.children);
-        if (processedImageCards.length === 0) return; // それでも0なら終了
+        if (processedImageCards.length === 0) return;
     }
 
-    // スライド位置を計算
     // 1枚のカードの幅 (offsetWidth) を基準にする
     const cardWidth = processedImageCards[0].offsetWidth;
     const offset = -currentProcessedImageIndex * cardWidth;
