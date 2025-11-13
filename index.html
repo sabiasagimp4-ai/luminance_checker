@@ -155,7 +155,7 @@ border: none;
 cursor: crosshair; /* スポイト機能のためにカーソルを変更 */
 }
 
-/* ★ 修正: ゼブラコントロール (スライダー) のUI */
+/* ゼブラコントロール (スライダー) のUI */
 #zebraControls {
     display: flex;
     align-items: center;
@@ -312,7 +312,7 @@ border: 1px solid var(--text-color-subtle);
 margin-left: 10px;
 }
 
-/* ★ 修正: 波形モニターのUI */
+/* 波形モニターのUI */
 .waveform-container {
     padding: 10px 0;
     border-bottom: 1px solid var(--line-subtle);
@@ -428,57 +428,108 @@ border-radius: var(--card-radius);
 }
 /* ------------------------------------- */
 
-/* ★ 修正: 処理済み画像エリア (横スクロールとCSSリサイズ) */
+/* ★ 修正: 処理済み画像エリア (スライダー) */
 #processedImagesArea {
     margin-top: 40px;
-    display: flex; /* Flexboxで横並びに */
-    gap: 20px;
+    display: flex; 
+    align-items: center;
+    justify-content: center;
     background-color: var(--bg-color);
-    padding: 0;
-    overflow-x: auto; /* 横スクロールを可能に */
-    white-space: nowrap; /* 子要素が折り返さないように */
-    padding-bottom: 15px; /* スクロールバーのための余白 */
-    width: 100%; /* 親要素の幅に合わせる */
+    width: 100%; 
     box-sizing: border-box;
+    position: relative; /* 矢印ボタンの絶対配置のため */
+    /* 左右のボタンのスペースを確保 */
+    padding: 0 50px;
+}
+
+/* ★ 追加: スライダーの表示窓 (ビューポート) */
+#processedImagesViewport {
+    width: 300px; /* カード1枚分の幅 */
+    overflow: hidden; /* はみ出たカードを隠す */
+    position: relative;
+}
+
+/* ★ 追加: スライダー本体 (この要素が動く) */
+#processedImagesWrapper {
+    display: flex; /* Flexboxで中のカードを横並びに */
+    transition: transform 0.4s ease-in-out; /* スライドのアニメーション */
+    width: auto; /* 幅はカードの合計分 */
 }
 
 .processed-image-card {
-    flex: 0 0 auto; /* 幅を固定し、伸縮させない */
-    width: 300px; /* カードの基準幅 */
+    flex: 0 0 300px; /* 幅を300pxに固定し、伸縮させない */
     background-color: var(--main-card-bg);
     padding: 20px;
     display: flex;
     flex-direction: column;
     align-items: center;
-
     border: 1px solid var(--border-color);
     border-radius: var(--card-radius);
+    box-sizing: border-box; /* paddingを含めて300px */
 }
 
 .processed-image-card canvas {
-    width: 100%; /* 親カードの幅(300px)に合わせる */
-    height: 150px; /* 固定の表示高さを設定 */
+    width: 100%; 
+    height: 150px; 
     display: block;
     border: none;
     margin-bottom: 10px;
     cursor: pointer;
     transition: border-color 0.2s ease;
-    
-    /* ★ 修正: 内部解像度を維持しつつ、見た目を縮小 */
-    object-fit: contain; /* アスペクト比を維持しつつ、指定した領域内に収まるように縮小 */
-    image-rendering: pixelated; /* シャープな縮小表示に */
-    background-color: #ddd; /* 縮小表示時の背景色 */
+    object-fit: contain; 
+    image-rendering: pixelated; 
+    background-color: #ddd; 
 }
 
 .processed-image-card canvas:hover {
-border-color: var(--line-strong);
+    border-color: var(--line-strong);
 }
 
 .processed-image-card p {
-font-size: 14px;
-color: var(--text-color-subtle);
-margin: 0;
-white-space: normal; /* カード名は折り返してOK */
+    font-size: 14px;
+    color: var(--text-color-subtle);
+    margin: 0;
+    white-space: normal; 
+}
+
+/* ★ 追加: 左右のナビゲーションボタン */
+.nav-button {
+    background: var(--accent-color);
+    border: 1px solid var(--accent-color);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    position: absolute; /* 親(#processedImagesArea)に対して絶対配置 */
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    transition: background-color 0.2s, border-color 0.2s;
+    color: #fff;
+    opacity: 0.7;
+}
+.nav-button:hover {
+    opacity: 1;
+}
+.nav-button.prev {
+    left: 0px; 
+}
+.nav-button.next {
+    right: 0px; 
+}
+.nav-button svg {
+    stroke: #fff;
+    width: 20px;
+    height: 20px;
+}
+.nav-button:disabled {
+    background-color: #999;
+    border-color: #999;
+    opacity: 0.3;
+    cursor: not-allowed;
 }
 
 
@@ -627,17 +678,35 @@ opacity: 1;
         font-size: 14px;
     }
 
+    /* ★ 修正: スライダーのレスポンシブ */
     #processedImagesArea {
-        gap: 15px;
+        gap: 0;
         margin-top: 30px;
+        padding: 0 40px; /* スマホでもボタンのスペース確保 */
     }
-    
+    #processedImagesViewport {
+        width: 250px; /* スマホでの表示カード幅に合わせる */
+    }
     .processed-image-card {
+        flex: 0 0 250px; /* スマホでのカード幅を調整 */
         padding: 15px;
-        width: 250px; /* スマホでのカード幅を調整 */
     }
     .processed-image-card canvas {
         height: 120px; /* スマホでの表示高さを調整 */
+    }
+    .nav-button {
+        width: 30px;
+        height: 30px;
+    }
+    .nav-button svg {
+        width: 16px;
+        height: 16px;
+    }
+    .nav-button.prev {
+        left: 5px;
+    }
+    .nav-button.next {
+        right: 5px;
     }
 }
 </style>
@@ -735,25 +804,36 @@ opacity: 1;
     </div>
 
     <div id="processedImagesArea">
-        <div class="processed-image-card">
-            <canvas id="binaryCanvas" data-filename="binary_image.png"></canvas>
-            <p>二値化画像</p>
+        <button id="prevProcessedImage" class="nav-button prev">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
+        
+        <div id="processedImagesViewport">
+            <div id="processedImagesWrapper">
+                <div class="processed-image-card">
+                    <canvas id="binaryCanvas" data-filename="binary_image.png"></canvas>
+                    <p>二値化画像</p>
+                </div>
+                <div class="processed-image-card">
+                    <canvas id="grayscaleCanvas" data-filename="grayscale_image.png"></canvas>
+                    <p>輝度グレースケール</p>
+                </div>
+                <div class="processed-image-card">
+                    <canvas id="saturationGrayscaleCanvas" data-filename="saturation_grayscale_image.png"></canvas>
+                    <p>彩度グレースケール</p>
+                </div>
+                <div class="processed-image-card">
+                    <canvas id="luminosityGrayscaleCanvas" data-filename="luminosity_grayscale_image.png"></canvas>
+                    <p>明度グレースケール</p>
+                </div>
+            </div>
         </div>
-        <div class="processed-image-card">
-            <canvas id="grayscaleCanvas" data-filename="grayscale_image.png"></canvas>
-            <p>輝度グレースケール</p>
-        </div>
-        <div class="processed-image-card">
-            <canvas id="saturationGrayscaleCanvas" data-filename="saturation_grayscale_image.png"></canvas>
-            <p>彩度グレースケール</p>
-        </div>
-        <div class="processed-image-card">
-            <canvas id="luminosityGrayscaleCanvas" data-filename="luminosity_grayscale_image.png"></canvas>
-            <p>明度グレースケール</p>
-        </div>
-    </div>
 
-</div>
+        <button id="nextProcessedImage" class="nav-button next">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+    </div>
+    </div>
 </div>
 
 <footer>
@@ -792,10 +872,8 @@ imagePlaceholder: document.getElementById('imagePlaceholder'),
 histogramCanvas: document.getElementById('histogramCanvas'),
 binaryCanvas: document.getElementById('binaryCanvas'),
 grayscaleCanvas: document.getElementById('grayscaleCanvas'),
-// ★ 新しいグレースケールCanvasを追加
 saturationGrayscaleCanvas: document.getElementById('saturationGrayscaleCanvas'),
 luminosityGrayscaleCanvas: document.getElementById('luminosityGrayscaleCanvas'),
-
 vectorscopeCanvas: document.getElementById('vectorscopeCanvas'), 
 copyTooltip: document.getElementById('copyTooltip'),
 values: {
@@ -828,13 +906,23 @@ spotLum: document.getElementById('spotLum'),
 // 波形
 waveformCanvas: document.getElementById('waveformCanvas'),
 waveModeLuma: document.getElementById('waveModeLuma'),
-waveModeRGB: document.getElementById('waveModeRGB')
+waveModeRGB: document.getElementById('waveModeRGB'),
+
+// ★ スライド機能用のDOM要素を追加
+processedImagesWrapper: document.getElementById('processedImagesWrapper'),
+prevProcessedImageButton: document.getElementById('prevProcessedImage'),
+nextProcessedImageButton: document.getElementById('nextProcessedImage'),
 };
 
 // グローバル変数
 let currentImage = null; // 画像オブジェクト
 let currentImageData = null; // フル解像度のピクセルデータ (ImageData)
 let previewCtx = DOM.resultImagePreview.getContext('2d');
+
+// ★ スライド機能用のグローバル変数
+let currentProcessedImageIndex = 0; // 現在表示している画像のインデックス
+let processedImageCards = []; // カード要素の配列
+
 
 // --- 2. イベントリスナー登録 ---
 // ドロップエリア
@@ -882,7 +970,6 @@ function onZebraSliderChange() {
     onZebraChange();
 }
 function onZebraNumberChange() {
-    // 入力値が範囲外の場合、丸める
     let val = parseInt(DOM.zebraThresholdNumber.value, 10);
     if (isNaN(val)) val = 0;
     if (val < 0) val = 0;
@@ -898,6 +985,10 @@ DOM.resultImagePreview.addEventListener('mouseleave', handlePreviewMouseLeave);
 // 波形
 DOM.waveModeLuma.addEventListener('change', onWaveModeChange);
 DOM.waveModeRGB.addEventListener('change', onWaveModeChange);
+
+// ★ スライドボタンのイベントリスナーを追加
+DOM.prevProcessedImageButton.addEventListener('click', () => navigateProcessedImages(-1));
+DOM.nextProcessedImageButton.addEventListener('click', () => navigateProcessedImages(1));
 
 
 // --- 3. メインロジック ---
@@ -926,6 +1017,11 @@ img.onload = () => {
     
     // 解析を実行 (ピクセルデータをグローバルに保存)
     analyzeAndDisplayResults(img);
+
+    // ★ 新規追加: processedImageCards を初期化し、最初の画像を表示
+    processedImageCards = Array.from(DOM.processedImagesWrapper.children);
+    currentProcessedImageIndex = 0; // 常に最初の画像から始める
+    updateProcessedImageDisplay(); // 初期表示
 };
 img.src = e.target.result;
 };
@@ -937,7 +1033,6 @@ function drawPreviewCanvas() {
     if (!currentImage || !previewCtx) return;
     const canvas = DOM.resultImagePreview;
     
-    // CSSの幅にCanvasの解像度を合わせる
     const aspectRatio = currentImage.height / currentImage.width;
     canvas.width = canvas.offsetWidth;
     canvas.height = canvas.offsetWidth * aspectRatio;
@@ -1023,8 +1118,11 @@ drawProcessedImage(DOM.saturationGrayscaleCanvas, img, threshold, 'saturation');
 drawProcessedImage(DOM.luminosityGrayscaleCanvas, img, threshold, 'luminosity');
 
 
-// ★ 新機能: 波形モニターを初回描画
-drawWaveform();
+// ★ 修正箇所: 波形モニターの初回描画をわずかに遅延させる
+setTimeout(() => {
+    drawWaveform();
+}, 100); 
+
 // ★ 新機能: ゼブラがもしONなら初回描画
 onZebraChange();
 }
@@ -1374,11 +1472,9 @@ function handlePreviewMouseMove(e) {
     const canvas = DOM.resultImagePreview;
     const rect = canvas.getBoundingClientRect();
     
-    // Canvas上のマウス座標
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    // 元画像での対応する座標を計算
     const scaleX = currentImage.width / canvas.width;
     const scaleY = currentImage.height / canvas.height;
     
@@ -1390,7 +1486,6 @@ function handlePreviewMouseMove(e) {
         return;
     }
 
-    // フル解像度のピクセルデータから値を取得
     const index = (imgY * currentImageData.width + imgX) * 4;
     const data = currentImageData.data;
     const r = data[index];
@@ -1399,13 +1494,11 @@ function handlePreviewMouseMove(e) {
     
     const lum = Math.round(0.299*r + 0.587*g + 0.114*b);
     
-    // 情報ウィンドウを更新
     DOM.spotPos.textContent = `${imgX}, ${imgY}`;
     DOM.spotHex.textContent = rgbToHex(r, g, b);
     DOM.spotRGB.textContent = `${r}, ${g}, ${b}`;
     DOM.spotLum.textContent = lum;
     
-    // ウィンドウをマウス位置に表示
     DOM.eyedropperInfo.style.left = `${e.clientX + 15}px`;
     DOM.eyedropperInfo.style.top = `${e.clientY}px`;
     DOM.eyedropperInfo.style.display = 'block';
@@ -1433,7 +1526,6 @@ function onZebraChange() {
 function drawZebraPattern(thresholdValue) {
     if (!currentImageData || !previewCtx) return;
 
-    // まず元の画像をベースとして描画
     drawPreviewCanvas(); 
     
     const canvas = DOM.resultImagePreview;
@@ -1443,34 +1535,29 @@ function drawZebraPattern(thresholdValue) {
     
     const thresholdLuma = (thresholdValue / 100) * 255;
     
-    // プレビューCanvasのピクセルデータを取得して操作
     const canvasImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const canvasData = canvasImageData.data;
     const canvasWidth = canvas.width;
 
-    // プレビューCanvasのピクセルを直接走査
     for (let i = 0; i < canvasData.length; i += 4) {
         const r = canvasData[i];
         const g = canvasData[i+1];
         const b = canvasData[i+2];
         
-        // 輝度を計算
         const lum = 0.299*r + 0.587*g + 0.114*b;
         
         if (lum > thresholdLuma) {
-            // 閾値を超えていたら、ゼブラ（縞模様）にする
             const y = Math.floor((i / 4) / canvasWidth);
             const x = (i / 4) % canvasWidth;
             
-            if ((x + y) % 8 < 4) { // 縞模様のロジック
-                canvasData[i] = 255;   // R
-                canvasData[i+1] = 0;   // G
-                canvasData[i+2] = 0;   // B
-                canvasData[i+3] = 200; // Alpha
+            if ((x + y) % 8 < 4) { 
+                canvasData[i] = 255;   
+                canvasData[i+1] = 0;   
+                canvasData[i+2] = 0;   
+                canvasData[i+3] = 200; 
             }
         }
     }
-    // 操作したピクセルデータをCanvasに戻す
     ctx.putImageData(canvasImageData, 0, 0);
 }
 
@@ -1492,7 +1579,6 @@ function drawWaveform() {
     canvas.width = w;
     canvas.height = h;
 
-    // 画像を波形解像度に縮小してピクセルデータを取得
     const tempWaveCanvas = document.createElement('canvas');
     const tempWaveHeight = (currentImage.height / currentImage.width) * w;
     tempWaveCanvas.width = w;
@@ -1504,18 +1590,16 @@ function drawWaveform() {
     const imageData = tempWaveCtx.getImageData(0, 0, w, tempWaveHeight);
     const data = imageData.data;
 
-    // 描画開始
     ctx.fillStyle = '#000000';
     ctx.fillRect(0, 0, w, h);
 
-    const lumaBins = new Uint8Array(w * 256); // 輝度
-    const rBins = new Uint8Array(w * 256); // R
-    const gBins = new Uint8Array(w * 256); // G
-    const bBins = new Uint8Array(w * 256); // B
+    const lumaBins = new Uint8Array(w * 256); 
+    const rBins = new Uint8Array(w * 256); 
+    const gBins = new Uint8Array(w * 256); 
+    const bBins = new Uint8Array(w * 256); 
 
-    // ピクセルデータを走査してカウント
     for (let i = 0; i < data.length; i += 4) {
-        const x = Math.floor((i / 4) % w); // X座標 (0 to w-1)
+        const x = Math.floor((i / 4) % w); 
         
         const r = data[i];
         const g = data[i+1];
@@ -1531,51 +1615,78 @@ function drawWaveform() {
     const accentColor = 'var(--accent-color)';
     
     if (mode === 'Luma') {
-        // ★ 修正: 輝度モードの感度調整
-        // 縮小画像の高さの 1/10 程度を最大輝度としてスケーリング
         const scalingMax = Math.max(1, Math.floor(tempWaveHeight / 10));
         drawWaveChannel(ctx, lumaBins, w, h, accentColor, scalingMax);
     } else { 
-        // RGBパレードモード
-        ctx.globalCompositeOperation = 'lighter'; // 色を重ねる
+        ctx.globalCompositeOperation = 'lighter'; 
         
-        // ★ 修正: RGBの感度調整
         const scalingMaxRGB = Math.max(1, Math.floor(tempWaveHeight / 20));
         drawWaveChannel(ctx, rBins, w, h, 'rgba(255, 0, 0, 0.7)', scalingMaxRGB);
         drawWaveChannel(ctx, gBins, w, h, 'rgba(0, 255, 0, 0.7)', scalingMaxRGB);
         drawWaveChannel(ctx, bBins, w, h, 'rgba(0, 0, 255, 0.7)', scalingMaxRGB);
 
-        ctx.globalCompositeOperation = 'source-over'; // 元に戻す
+        ctx.globalCompositeOperation = 'source-over'; 
     }
 }
 
 // ★ 修正: 波形描画のサブ関数 (スケーリングロジック)
 function drawWaveChannel(ctx, bins, w, h, color, scalingMax) {
     
-    const hScale = h / 256; // 輝度(0-255)をキャンバスの高さ(h)にマッピング
+    const hScale = h / 256; 
 
     for (let x = 0; x < w; x++) {
-        for (let l = 0; l < 256; l++) { // l = 輝度/RGB値
+        for (let l = 0; l < 256; l++) { 
             const count = bins[x * 256 + l];
             if (count > 0) {
-                // ★ 修正: ピクセル数に応じて不透明度を変える
                 const opacity = Math.min(1, (count / scalingMax) * 0.7 + 0.3);
                 
-                if (color.includes('rgba')) { // RGBモード
+                if (color.includes('rgba')) { 
                     ctx.globalAlpha = opacity;
                     ctx.fillStyle = color;
-                } else { // 輝度モード
-                    // accent-color のRGB (b95282) を使ってrgbaを生成
+                } else { 
                     ctx.fillStyle = `rgba(185, 82, 130, ${opacity})`;
                 }
                 
-                // Y軸は下が0, 上が255なので反転
                 ctx.fillRect(x, h - (l * hScale) - 1, 1, 1); 
             }
         }
     }
-    ctx.globalAlpha = 1.0; // 不透明度をリセット
+    ctx.globalAlpha = 1.0; 
 }
+
+// ★★★ ここからスライダー機能の関数 ★★★
+
+// 処理済み画像の表示を更新する関数
+function updateProcessedImageDisplay() {
+    if (processedImageCards.length === 0) {
+        // まだカードが読み込まれていない場合は、DOMから再取得
+        processedImageCards = Array.from(DOM.processedImagesWrapper.children);
+        if (processedImageCards.length === 0) return; // それでも0なら終了
+    }
+
+    // スライド位置を計算
+    // 1枚のカードの幅 (offsetWidth) を基準にする
+    const cardWidth = processedImageCards[0].offsetWidth;
+    const offset = -currentProcessedImageIndex * cardWidth;
+    
+    DOM.processedImagesWrapper.style.transform = `translateX(${offset}px)`;
+
+    // 矢印ボタンの有効/無効を切り替える
+    DOM.prevProcessedImageButton.disabled = currentProcessedImageIndex === 0;
+    DOM.nextProcessedImageButton.disabled = currentProcessedImageIndex === processedImageCards.length - 1;
+}
+
+// 処理済み画像をナビゲートする関数
+function navigateProcessedImages(direction) {
+    const newIndex = currentProcessedImageIndex + direction;
+    
+    // インデックスが範囲内かチェック
+    if (newIndex >= 0 && newIndex < processedImageCards.length) {
+        currentProcessedImageIndex = newIndex;
+        updateProcessedImageDisplay();
+    }
+}
+
 
 </script>
 </body>
